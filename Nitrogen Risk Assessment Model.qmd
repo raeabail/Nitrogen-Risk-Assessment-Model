@@ -1,0 +1,2340 @@
+---
+title: "Nitrogen Risk Assessment Model"
+format:
+  html: 
+    grid:
+      body-width: 1600px
+    resources:
+      - shinylive-sw.js
+filters:
+  - shinylive
+---
+
+```{shinylive-r}
+#| standalone: true
+#| viewerHeight: 1200
+library(Rcpp)
+library(shiny)
+library(shinydashboard)
+library(leaflet)
+library(sp)
+library(tidyverse)
+library(dplyr)
+library(readxl)
+library(here)
+library(ggpubr)
+library(grid)
+library(sf)
+library(data.table)
+library(DT)
+library(png)
+library(ggplot2)
+library(plyr)
+library(crosstalk)
+library(htmltools)
+library(htmlwidgets)
+library(gotop)
+
+library(raster)
+library(leafem)
+library(leaflet)
+library(leaflet.extras)
+library(leafsync)
+
+library(cli)
+
+library(BH)
+library(anytime)
+library(colourvalues)
+library(googlePolylines)
+library(mapdeck)
+library(spatialwidget)
+
+##############################################################################################################################
+#### open, load, and prep data ####
+
+Nsources <- read_excel("data/Sum_of_Nsources1.xlsx")
+Sum_of_Nsources <- read_excel("data/Nsources_for_map.xlsx")
+MarionCo <- st_read("data/2020_Census_Tracts/2020_Census_Tracts.shp")
+
+##############################################################################################################################
+
+# Define UI
+ui <- fluidPage(
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "www/css/journal-theme.css"),
+    tags$link(rel = "stylesheet", type = "text/css", href = "www/css/style.css"),
+    tags$link(rel = "stylesheet", type = "text/css", src = "www/css/bootstrap.min.css")),
+    
+  
+  div(
+    class = 'double-border-text<Nitrogen Risk Assessment>',
+    h1(style = "text-align: center; float: left; margin-left: 250px; margin-top: 90px", "Nitrogen Risk Assessment Model"),
+    h4(style = "text-align: center; float: left; margin-left: 320px; margin-top: 0px; margin-bottom: 50px", "Case study performed in Marion County, Indiana"),
+    tags$img(type = "jpeg", src = "marion_county1.jpeg",
+             style="margin-left: auto; margin-right: 250px; margin-top: -125px; width: 350px; float: right")
+  ),
+
+  
+  sidebarLayout(
+    sidebarMenu(),
+    mainPanel(width = 12,
+      tabsetPanel(
+        tabPanel("Introduction", tags$style(type = "text/css", "a{color: #001861;}"),
+                 h2(style = "text-align: center;", "Introduction to the world of Nitrogen!"),
+                 p(style = "border: 2px solid #f5f5f5; background-color: #bee8ff; padding: 10px; color: black", class = "lead",  
+                   
+                   tags$b("Summary"),
+                  
+                   br(),
+                   
+                   "Nitrogen plays a vital role in the environment, serving as an essential element for all 
+                   living organisms and constituting the most abundant component in our atmosphere. It is 
+                   present in soils, plants, drinking water, and the air. It also functions as a crucial 
+                   building block of DNA as nitrogen is key for the synthesis of amino acids and 
+                   proteins, which promotes plant growth and contributes to the production of the food we 
+                   grow and eat [1, 3]. But as with everything, balance is key! 
+                   Not enough nitrogen can result in low crop 
+                   yields and stunted plant growth, while too much can be harmful and toxic to both 
+                   plants and the environment [1]. The cycling of nitrogen through ecosystems is pivotal for sustaining productive and 
+                   healthy environments, ensuring the appropriate nitrogen balance [1].",
+                   
+                   br(),
+                   br(),
+                   
+                   "But... how does nitrogen become unbalanced? Mostly through excess nitrogen. Excess nitrogen can come from
+                   the use of synthetic fertilizers and the 
+                   burning of fossil fuels. This excess  becomes a disruptive pollutant, contaminating 
+                   land, water, and air. Furthermore, it contributes to climate change and ozone layer 
+                   depletion [2]. To address these issues, sustainable nitrogen management is imperative. It is 
+                   necessary to mitigate the release of excess nitrogen into the environment, protecting 
+                   human health and preserving ecosystems [2].",
+                   
+                   br(),
+                   br(),
+                   
+                   "To effectively control nitrogen, it is crucial to comprehend the nitrogen cycle, 
+                   which outlines the continuous movement of nitrogen from the atmosphere to the Earth, 
+                   through soils, and back into the atmosphere.",
+                   
+                   br(),
+                   
+                   p(class = "lead", "To get familiar with nitrogen, play the summary video below:",
+                   
+                   br(),
+                   br(),
+                   
+                   HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/IHfqVe8eq4E" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+                   tags$figcaption(style= 'text-align: center', "Properties of Nitrogen, https://www.youtube.com/watch?v=IHfqVe8eq4E&t=6s"),
+                   
+                   br(),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   
+                   p(class = "lead",
+                     
+                   tags$b("What is Nitrogen?")),
+                   
+                   column(9, tags$text(style= "text-align: left; font-size: 22px",
+                             "Nitrogen, also known as 'N' in the periodic table, is a clear and scentless substance [5]. 
+                             It is present everywhere! It is in the soil we stomp our feet in, the water we chug, and the air we catch our breath with. 
+                   In fact, about 78% of 
+                   the air around us is made up of N! This element is crucial for all living things, 
+                   including us humans. For example, it is important for plants to grow. If there's not enough N, 
+                   plants have a hard time growing, resulting in low amounts of crops [5]. On the other hand, 
+                   too much N can be harmful to plants [5]. This is why management of the N cycle is 
+                   essential for sustaining healthy ecosystems, ensuring food production, and minimizing 
+                   environmental harm.")),
+                   
+                   
+                   column(2, tags$img(id="nitro_jpeg", type = "jpg", src = "nitro_jpeg.jpg", 
+                            style="align: right"),
+                          tags$figcaption(style= 'text-align: center', "Figure 1: Liquid Nitrogen")),
+                   
+                   br(),
+                   br(),
+                   br(),
+                   br(),
+                   br(),
+                   
+                   p(class = "lead",
+                     
+                     br(),
+                     br(),
+                     br(),
+                     br(),
+                     br(),
+                     br(),
+                     tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   
+                   tags$b(style= "text-align: left; font-size: 22px;", "Why Is Nitrogen Important?")),
+                   
+                   column(12, tags$text(style= "text-align: left; font-size: 22px;", 
+                                        "Nitrogen creates life! It creates life for both humans and plants. It creates life through
+                   being a key element for the 2 main nucleic acids known as DNA & RNA [5].",
+                                        
+                                        br(),
+                                        br(),
+                   
+                      tags$li(style = "font-size:22px;", "DNA (deoxyribonucleic acid) is a self-replicating material that is present in nearly all living organisms as 
+                   the main component of chromosomes and carrier of genetic information [5]."),
+                   
+                      tags$li(style = "font-size:22px;", "DNA carries the genetic information, which acts as the 'instructions' needed 
+                              for an life to develop, survive and reproduce [5]."),
+                   
+                      tags$li(style = "font-size:22px;", "RNA (ribonucleic acid), is a nucleic acid present in all living cells, which 
+                   acts as a messenger carrying instructions from DNA in order to create amino acids that connect
+                           and produce proteins [5]."),
+                   
+                      tags$li(style = "font-size:22px;", "Specifically for plants, nitrogen is also a key component of chlorophyll! Chlorophyll is the 
+                           green pigment that plants use to make food during a process called photosynthesis [5].")),
+                   
+                   
+                   p(class = "lead", 
+                   column(12, tags$text(style= "text-align: left; font-size: 22px;",
+                          
+                   "In addition to its role in creating life, 
+                   nitrogen is important for making fertilizers, nitric acid, nylon, and dyes [5]. It plays a 
+                   vital role in the nitrogen cycle, contributing to the balance of ecosystems [5]. Overall, nitrogen is 
+                   indispensable as it has high value in various industrial processes and our natural systems."))),
+                   
+                   br(),
+                   br(),
+                   br(),
+                  
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                  tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                    
+                  p(class = "lead",
+                    
+                    tags$b(style= "text-align: left; font-size: 22px;", "What Exactly Is the Nitrogen Cycle?"),
+                    
+                  column(12, tags$text(style= "text-align: left; font-size: 22px;",
+                       
+                  "The nitrogen cycle is a series of processes that never stops! Nitrogen is constantly moving and 
+                  switching form. Nitrogen transitions through many different components of both living and non-living 
+                  environments, including the atmosphere, soil, water, plants, animals, and bacteria [5].",
+                       
+                  br(),
+                  br(),
+                       
+                       "The nitrogen cycle consists of five main stages: fixation, mineralization, nitrification, 
+                  immobilization, and denitrification."),
+                       
+                  br(),
+                  br(),
+                  
+                  p(class = "lead",
+                    "To get familiar with the nitrogen cycle, play the video below:")),
+                  
+                  br(),
+                  
+                  HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/njzFtvMPJ3A"
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+                  tags$figcaption(style= 'text-align: center', "Nitrogen Cycle Overview, https://www.youtube.com/watch?v=njzFtvMPJ3A&t=2s")),
+                  
+                  br(),
+                  
+                  tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                  
+                  p(class = "lead",
+                    
+                    "Below, each major step of the nitrogen cycle is broken down and described:",
+                    
+                    br(), 
+                    br(),
+                       
+                  column(9, tags$text(style= "text-align: left; font-size: 22px;",
+                                      tags$b(style= "text-align: left; font-size: 22px;", "Stage 1: Nitrogen Fixation"),
+                       
+                       br(),
+                       
+                       "This phase starts with nitrogen flying around in the air as a gas in the form of N2 [6]. In this 
+                  form, nitrogen can’t do much for plants or animals. It is strong and hard to transform. So, there are 
+                  three ways to “break” and transform it and make it useful.",
+                       
+                       br(),
+                       br(),
+                  
+                  tags$li(style = "font-size:22px;", "One way to transform N2 is via tiny helpers in the soil called 
+                          microbes. Microbes “catch” nitrogen gas as it is flying around in the air and turn it into a 
+                          different form called ammonia (NH3) [6]. This new form is very nutritious for plants, and it helps 
+                          them grow."),
+                  
+                  tags$li(style = "font-size:22px;", "The second way to transform N2 is via lightning! Lightning breaks 
+                          the strong N2 form, causing smaller nitrogen atoms to bounce around [6]. These nitrogen atoms bond 
+                          with oxygen and dissolve in rain in order to make a useful form of nitrogen called nitrate 
+                          (NO3) [6]."),
+                  
+                  tags$li(style = "font-size:22px;", "The last way to transform N2 is via industrial processes! 
+                          Factories convert N2 into ammonia (NH3) [6]."))),
+                  
+                  column(3, tags$img(id="nitro_fixation", type = "png", src = "nitro_fixation.png", 
+                                     style="align: right; height: 400px"),
+                         tags$figcaption(style= 'text-align: center', "Figure 2: Processes that break N2 in Nitrogen Fixation")),
+                       br(),
+                       br(),
+                       br(),
+                       
+                       
+                  
+                  tags$img(id="down-arrow", type = "png", src = "down-arrow.png", 
+                           style="display: block; margin-left: auto; margin-right: auto; height:35px")),
+                  
+                       
+                       p(class = "lead",
+                         
+                         br(),
+                         br(),
+                         br(),
+                         
+                         column(7, tags$text(style= "text-align: left; font-size: 22px; align-items: center;
+                                             vertical-align: middle;",
+                                             
+                         tags$b("Stage 2: Mineralization & Ammonification"),
+                         
+                         br(),
+                         
+                         "This stage of the nitrogen cycle occurs in the soil! Nitrogen is found in things like animal waste 
+                         and dead plants. When animals secrete waste or plants use up all nutrients and die, they break down 
+                         in the soil [7]. Then, tiny organisms in the soil start to change the waste into a type of nitrogen that 
+                         living plants can soak up [7]. When it is converted to ammonia (NH3), it is known as ammonification!
+                         So, this stage is nature’s way of recycling old, dead stuff into new 
+                         food for living plants [7]!")),
+                         
+                         column(5, tags$img(id="immobilization", type = "png", src = "immobilization.png", 
+                                            style="display: flex; height: 400px;
+                                            vertical-align: middle; justify-content: center;
+                                            align-items: center; margin-top: -100px"),
+                                tags$figcaption(style= 'text-align: left', "Figure 3: Mineralization and Ammonification in the soil")),
+                         br(),
+                         br(),
+                         br(),
+                         
+                         tags$img(id="down-arrow", type = "png", src = "down-arrow.png", 
+                                  style="display: block; margin-left: auto; margin-right: auto; height:35px")),
+                         
+                         
+                         br(),
+                         br(),
+                         br(),
+                         
+                         p(class = "lead",
+                           column(12, tags$text(style= "text-align: left; font-size: 22px;",
+                         tags$b("Stage 3: Nitrification"),
+                         
+                         br(),
+                         
+                         "This stage of the nitrogen cycle also occurs in the soil, and it uses the ammonia 
+                         (NH3) created in the previous step [8]! During nitrification, it changes into two other 
+                         things:",
+                         
+                         br(),
+                         br(),
+                         
+                         tags$li(style = "font-size:22px;", "Nitrites (NO2)"),
+                         tags$li(style = "font-size:22px;", "Nitrates (NO3)"),
+                         
+                         br(),
+                         
+                         "These forms of nitrogen are very nutritious for plants and animals that eat plants [8]. 
+                         But there’s a twist: plants and animals can't use the nitrite (NO2) directly, only 
+                         the nitrate (NO3). So, there are helpful bacteria in the soil. One kind turns the 
+                         ammonia (NH3) into nitrite (NO2), and another kind turns the nitrite (NO2) into 
+                         nitrate (NO3) [8]. It takes teamwork!"
+                         
+                         ),
+                         
+                         br(),
+                         
+                         tags$img(id="nitrification", type = "png", src = "nitrification.png", 
+                                  style="display: block; margin-left: auto; margin-right: auto; width: auto"),
+                         tags$figcaption(style= 'text-align: center', "Figure 4: Nitrogen conversion in nitrification"),
+                         
+                         br(),
+                         br(),
+                         
+                         tags$img(id="down-arrow", type = "png", src = "down-arrow.png", 
+                                  style="display: block; margin-left: auto; margin-right: auto; height:35px"))),
+                        
+                         
+                         p(class = "lead",
+                           column(9, tags$text(style= "text-align: left; font-size: 22px;",
+                                               
+                                               br(),
+                                               br(), 
+                                               
+                         tags$b("Stage 4: Immobilization"),
+                         
+                         br(),
+                         
+                         "The fourth stage of the nitrogen cycle is called immobilization, and it is known as the opposite of 
+                         mineralization [7]. Both processes manage how much nitrogen is in the soil. This stage is when tiny organisms 
+                         take and absorb nitrogen from the soil and hog it from the plants [7]. This might sound like a problem, but it 
+                         helps balance the amount of nitrogen in the soil, so there is not too much nitrogen! ")),
+                         
+                         column(3, tags$img(id="numnum", type = "png", src = "numnum.png", 
+                                            style="display: flex; height: 250px;
+                                            vertical-align: middle; justify-content: center;
+                                            align-items: center; margin-top: 25px"),
+                                tags$figcaption(style= 'text-align: center', "Figure 5: Microorganisms absorbing nitrogen in immobilization")),
+                         
+                         br(),
+                         br(),
+                         
+                         tags$img(id="down-arrow", type = "png", src = "down-arrow.png", 
+                                  style="display: block; margin-left: auto; margin-right: auto; height:35px")
+                           ),
+                         
+                         p(class = "lead",
+                           column(12, tags$text(style= "text-align: left; font-size: 22px;",
+                         tags$b("Stage 5: Denitrification"),
+                         
+                         br(),
+                         
+                         "We have finally come to the last stage of the nitrogen cycle! This stage is called denitrification, and 
+                         it is a bit of a twist in the cycle. So far, the rest of the stages have been about movement of nitrogen 
+                         around the environment and how it gets absorbed and eaten by plants, tiny organisms, and animals. This 
+                         stage is sort of like a break for the cycle.",
+                         
+                         br(),
+                         br(),
+                         
+                         "In certain conditions, like when the soil is flooded with water, some special bacteria kick into action. 
+                         These bacteria are like the decomposers of the nitrogen world. They munch on nitrate, which is the form of 
+                         nitrogen that plants love, and release nitrogen gas (N2) back into the atmosphere [9]. It's like they're 
+                         recycling nitrogen, but in a way that's a bit different from what we've seen before [9]. ",
+                         
+                         br(),
+                         br(),
+                         
+                         "Now, why does this matter? Well, denitrification helps balance the amount of nitrogen in the soil [9]. If 
+                         there's too much nitrate hanging around, it can cause problems like pollution in waterways. So, 
+                         denitrification acts like nature's cleanup crew, making sure things stay in harmony.",
+                         
+                         br(),
+                         br(),
+                         
+                         "But, here's the thing: while denitrification helps keep nitrogen levels in check, it also means there's 
+                         less nitrate available for plants to use [9]. So, it's a bit of a trade-off. Overall, though, denitrification 
+                         is an important part of the nitrogen cycle, ensuring that nitrogen moves around the environment in a healthy 
+                         way."),
+                         
+                         tags$img(id="denitro", type = "png", src = "denitro.png", 
+                                  style="display: block; margin-left: auto; margin-right: auto; height: 400px"),
+                         tags$figcaption(style= 'text-align: center', "Figure 6: Denitrification process"),
+                         
+                         br(),
+                         tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                           )),
+                  
+                         
+                        p(class = "lead",
+                           column(12, tags$text(style= "text-align: left; font-size: 22px;", 
+                        tags$b("Now What?"),
+                        br(), 
+                        
+                        "Now, we know a little bit about how nitrogen changes forms and moves throughout the environment.",
+                        
+                        br(),
+                        br(),
+                        
+                        "Now, we need to know a little bit about where nitrogen comes from. We need to ask the question:",
+                        
+                        br(),
+                        br(),
+                        
+                        tags$b(style="display: block; color: black; font-size:24px; background-color: #bee8ff; text-align: center; 
+                               margin-left: auto; margin-right: auto;", 
+                               "What are the possible sources of nitrogen?"),
+                        
+                        br(),
+                        br(),
+                        
+                        "Click the next tab called 'Nitrogen Sources' to learn more!",
+                        
+                        br(),
+                        br(),
+                        br(),
+                        
+                        use_gotop()
+                        ))),
+                   
+                 )))),
+        tabPanel("Nitrogen Sources", 
+                 h2("Where does Nitrogen come from?"),
+                 p(class = "lead", "Click on any source from the dropdown menu to find out more!"),
+                 selectInput("dropdown", "Choose a Source:",
+                             choices = c("Nitrogen Sources",
+                                         "Electricity", 
+                                         "Fertilizer", 
+                                         "Food (Food Production & Food Waste)",
+                                         "Natural Gas", 
+                                         "Pet (Food Production & Pet Waste)", 
+                                         "Transportation", 
+                                         "Wastewater")),
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Nitrogen Sources'",
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   p(
+                     tags$img(id="nitrogen-sysmodel", type = "jpeg", src = "nitrogen-sysmodel.jpeg", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 1000px;"),
+                     
+                     
+                      tags$figcaption(style = "text-align: center", "A system model for the nitrogen cycle (Source: https://ugc.berkeley.edu/background-content/nitrogen/)"),
+                     
+                     br(),
+                     br(),
+                     br(),
+                     
+                     tags$b(style="display: block; color: black; font-size:20px; background-color: #bee8ff; text-align: center; 
+                               margin-left: auto; margin-right: auto;", 
+                            "Now, we are familiar with nitrogen, the nitrogen cycle, common sources of nitrogen, and how these sources
+                     contribute to the nitrogen cycle...", 
+                     
+                     br(),
+                     br(),
+                     
+                     "Click the next tab 'Study Site' in order to get familiar with where this study is being conducted as that is vital
+                     for understanding how the nitrogen cycle can differ based on the environment."))),
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Electricity'",
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   p(class = "lead",
+                     
+                     tags$b("What is the connection between electricity and nitrogen pollution?"),
+                     
+                     br(),
+                     
+                     "Nitrogen is the most abundant element in the air and is essential to plant and animal life. However, 
+                     sources of nitrogen from human activities, such as electricity, can upset the natural balance of nitrogen
+                     in the environment.",
+                     
+                     br(),
+                     br(),
+                     
+                     "Electricity is produced via the burning of fossil fuels. When fossil fuels are burned, 
+                     they release nitrogen oxides into the atmosphere, which contributes to the formation
+                     of smog and acid rain. The most common nitrogen-related compoiunds emitted into the air by human activities
+                     are collectively referred to as nitrogen oxides. Most of the nitrogen oxides released in the U.S due to
+                     human acitivity are from the burning of fossil fuels.",
+                     
+                     tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                     br(),
+                     
+                     p(class = "lead", tags$b("How do we quantify the amount of nitrogen pollution from electricity?"),
+                     
+                     br(),
+                     
+                     class = "lead", "To quantify nitrogen pollution from electricity, we need to gather data from what kinds of things
+                     use electrictity. In this study, electricity usage (total kWh consumed) is gathered and  produced from residential, 
+                     commercial, and industrial buildings.",
+                     
+                     br(),
+                     
+                     tags$li(class = "lead", tags$b("Residential buildings"), "include all types of housing 
+                             (e.g., houses, apartment complexes, townhouses, condos, etc.). "),
+                     tags$li(class = "lead", tags$b("Commercial buildings"), "included the following sectors: 
+                             wholesale trade, retail trade, finance and insurance, real estate, renting, and 
+                             leasing, educational services, healthcare and social assistance, arts, entertainment, 
+                             and recreation, accommodation and food services, and other services. "),
+                     tags$li(class = "lead", tags$b("Industrial buildings"), "included the following sectors: agriculture, 
+                             forestry, fishing, and hunting, mining, quarrying, and oil and gas extraction, utilities, 
+                             construction, manufacturing, transportation and warehousing, information, professional, 
+                             scientific, and technical services, management of companies and enterprises, administrative 
+                             and support and waste management and remediation services, and other services "),
+                     
+                     tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                     br(),
+                     
+                     p(class = "lead", tags$b("Calculations for Nitrogen Pollution"),
+                       
+                       br(),
+                       
+                       class = "lead", "The total kilowatt hours of electricity consumed at residences was calculated by the 
+                       number of households that use electricity as their primary source of energy, the average annual 
+                       electricity bill per household in Marion County, and the kilowatt hour-price ratio. Because there 
+                       is no data that lists the number of commercial or industrial buildings per census tract, the total 
+                       kilowatt hours of electricity used was calculated by the total population per census tract, 
+                       the total population in Marion County, total number of commercial/industrial buildings in Marion County, 
+                       the average annual electricity bill per commercial/industrial building in Marion County, and the 
+                       kilowatt hour-price ratio. The NOx and N2O emissions for the region (EPA, 2021) and atomic weight 
+                       conversions were used to determine the N emissions from electricity in each census tract. 
+                       The equations are as follows:",
+                       
+                       tags$img(id="electricity_calc", type = "png", src = "electricity_calc.png", 
+                                style="display: block; margin-left: auto; margin-right: auto; width: 1000px")),
+                       
+                       "where NOxelectricity (N2Oelectricity) represents NOx (N2O) (kg) exported from electricity per 
+                       census tract per year, H represents number of households (or buildings for commercial and industrial 
+                       calculations) per census tract, EB represents average annual electricity bill, eGRIDNOx (and eGRIDN2O) 
+                       represents the eGRID emission factor for NOx (and N2O), and CNOx (CN2O) represents the conversion of NOx 
+                       (kg) (N2O (kg)) to N (kg). ",
+                     
+                     p(class = "lead", 
+                       
+                       br(),
+                       "Total nitrogen from electricity was calculated as follows:",
+                       
+                       tags$img(id="electricity_calc1", type = "png", src = "electricity_calc1.png", 
+                                style="display: block; margin-left: auto; margin-right: auto; width: 1000px"),
+                       
+                       br(),
+                       
+                       "This calculation was done for residential, commercial, and industrial buildings in each census 
+                       tract and added together to get the total N (kg) exported by electricity use per year as follows: ",
+                       
+                       tags$img(id="electricity_calc2", type = "png", src = "electricity_calc2.png", 
+                                style="display: block; margin-left: auto; margin-right: auto; width: 1000px")),
+                     
+                     "where TNelectricity is the total nitrogen emitted from electricity from residential, commercial, and 
+                     industrial sources combined, resN electricity is the total nitrogen emitted from electricity from residential 
+                     sources, comNelectricity is the total nitrogen emitted from electricity from commercial sources, and indN 
+                     electricity is the total nitrogen emitted from electricity from industrial sources.",
+                     
+                     
+                       
+                       )
+                     )
+                 ),
+                 tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Fertilizer'",
+                   p(class = "lead",
+                     
+                     tags$b("What is the connection between fertilizer and nitrogen pollution?"),
+                     
+                     br(),
+                     
+                     "The production and use of synthetic nitrogen fertilizers contributes to climate change in two key ways:",
+                     
+                     br(),
+                     br(),
+                     
+                     tags$b("1. Fertilizer manufacturing produces greenhouse gas emissions"),
+                     
+                     br(),
+                     
+                     "The production of synthetic nitrogen fertilizers is heavily reliant on fossil fuels. Through the combustion of 
+                     natural gas, liquid ammonia, a compound rich in nitrogen, is produced [10]. Due to its high nitrogen content, liquid 
+                     ammonia serves as an efficient fertilizer, contributing significantly to agricultural productivity [10].",
+                     
+                     br(),
+                     br(),
+                     
+                     "The combustion of natural gas for fertilizer production leads to the emission of greenhouse gases, such as methane 
+                     and carbon dioxide, thereby exacerbating the effects of climate change [10].",
+                     
+                     br(), 
+                     br(),
+                     
+                     tags$img(id="farming", type = "jpeg", src = "farming.jpeg", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 1000px",
+                     tags$figcaption(style= 'text-align: center', "Figure 7: Fertilizer and Farming")),
+                     
+                     br(),
+                     br(),
+                     
+                     p(class = "lead", tags$b("2. Nitrous oxide emissions from fertilizer use"),
+                     
+                     br(),
+                     
+                     "Overuse of nitrogen fertilizers leads to their conversion into nitrous oxide (N2O), which then escapes into the 
+                     atmosphere.",
+                     
+                     br(),
+                     br(),
+                     
+                     "Nitrous oxide (N2O), a potent greenhouse gas with a long atmospheric lifespan of around 114 years, has a global 
+                     warming potential 300 times greater than that of carbon dioxide [10].",
+                     
+                     br(),
+                     br(),
+                     
+                     "These emissions play a significant role in climate change, hindering efforts to achieve net zero targets essential 
+                     for mitigating severe climate impacts.",
+                     
+                     br(),
+                     br(),
+                     
+                     "The negative impacts of synthetic fertilizers have been found to be largely avoidable [10]; much of the nitrogen 
+                     used in agriculture exceeds what crops actually need, offering no gain to their growth. Recent studies suggest 
+                     that it's possible to nourish a growing global population with a healthy diet while significantly cutting down 
+                     on the use of fertilizers [10].")),
+                     
+                     tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                     br(),
+                     
+                     p(class = "lead", tags$b("The nature loss of nitrogen"),
+                       
+                       br(),
+                       
+                       "The build-up of excess nitrogen in the environment is one of the main threats to biodiversity.
+                       There can be build-up in the soil and in the water, and it can damage different aspects of these environments.",
+                       
+                       br(),
+                       br(),
+                       
+                       tags$b("1. Build-up in the soil"),
+                       
+                       br(),
+                       
+                      "When there is a build-up of nitrogen in the soil, it can damage delicate plant species",
+
+                      "Many plant species are unable to withstand the effects of synthetic fertilizers or elevated nitrogen levels. 
+                      Nitrogen pollution favors species that can tolerate high nitrogen, leading them to dominate and overshadow more 
+                      delicate wild plants and fungi [10]. This imbalance results in a decline in biodiversity and adversely affects the 
+                      health of various plant communities.",
+
+                      "Too much fertilizer has also been shown to acidify soils too, damaging soil 
+                      health and reducing the productivity of soils [10].",
+                      
+                      br(),
+                      br(),
+                      
+                      tags$b("2. Build-up in aquatic life"),
+                      
+                      br(),
+                      
+                      "When there is a build-up of nitrogen in water, it can have a negative impact upon fish and other aquatic life.",
+                       
+                      
+                      "Due to its solubility, reactive nitrogen can readily enter water systems, where it promotes excessive plant 
+                      growth, often causing 'algal blooms' [11]. These blooms decrease the levels of light and oxygen in the water, disrupting 
+                      aquatic plant communities and leading to fish deaths [11].",
+                      
+                      
+                      "In regions such as the Gulf of Mexico, nitrogen runoff from agricultural activities has led to the creation of an 
+                      extensive marine 'dead zone,' comparable in size to the country of Wales [11]. The impact of this nitrogen pollution 
+                      has been catastrophic, severely harming biodiversity and affecting the livelihoods of local communities [11]."),
+                      
+                      tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                      br(),
+                      
+                      
+                      p(class = "lead", tags$b("Calculations for Nitrogen Pollution"),
+                        
+                        br(),
+                        
+                        class = "lead", "This calculation is a four-fold process that involved using zonal statistics 
+                        to calculate the NDVI (Normalized Difference Vegetation Index) gradient of Marion County, 
+                        transforming the NDVI gradient to area (km2) to find the amount of green space in Marion County, 
+                        and calculating fertilizer use. NDVI is a measure of the state of plant health based on how the 
+                        plant reflects light at certain frequencies and quantifies vegetation by measuring the difference 
+                        between near-infrared (which vegetation strongly reflects) and red light (which vegetation absorbs). 
+                        Additionally, fertilizer use was split up into two categories: households & public green spaces and 
+                        agricultural land as the difference in fertilizer is significant. It should be noted that even though
+                        Indiana has a large agricultural industry, within the limits of Marion County, there is only 
+                        approximately 76 km2 of agricultural land, making up approximately 0.013% of agricultural land in Indiana. ",
+                        
+                        tags$img(id="farmland", type = "png", src = "farmland.png", 
+                                 style="display: block; margin-left: auto; margin-right: auto; width: 500px"),
+                        tags$figcaption(style= 'text-align: center', "Figure 8: Agricultural fields (km^2) in Marion County, IN")),
+                      
+                      
+                      p(class = "lead", 
+                        
+                        "In order to calculate the amount of green space (km2) in Marion County, a function that calculated NDVI 
+                        using the red and NIR bands from a .tif file of Marion County was created in R Programming. The red band 
+                        is a reflection in the red range of the spectrum, and the NIR is the reflection in the near-infrared range. 
+                        The reason for using these bands is because the density of vegetation (NDVI) at a certain point of the image 
+                        is equal to the difference in the intensities of reflected light in the red and infrared range divided by the
+                        sum of these intensities. This index defines values from -1.0 to 1.0, basically representing greens, where 
+                        negative values are mainly formed from clouds, water and snow, and values close to zero are primarily formed 
+                        from rocks and bare soil. Very small values (0.1 or less) of the NDVI function correspond to empty areas of 
+                        rocks, sand or snow. Moderate values (from 0.2 to 0.3) represent shrubs and meadows, while large values 
+                        (from 0.6 to 0.8) indicate temperate and tropical forests. The calculation is as follows:",
+                        
+                        tags$img(id="fert_calc1", type = "png", src = "fert_calc1.png", 
+                                 style="display: block; margin-left: auto; margin-right: auto; width: 500px"),
+                        
+                        br(),
+                        
+                        "Zonal statistics were, then, used to extract the mean NDVI for each census tract. 
+                        The mean NDVI was transformed to area (km2) of green space per census tract by multiplying 
+                        the total land area of each census tract by their mean NDVI as follows. ",
+                        
+                        br(),
+                        br(),
+                        
+                        "Finally, fertilizer use was calculated for both public green spaces and households and 
+                        agricultural fields. The primer incorporated the average percentage of greenspaces that are 
+                        fertilized by fertilizer used per km2, the average nitrogen in fertilizer, and 1 minus the 
+                        average fertilizer uptake factor. The calculation for fertilizer use in these spaces (N (kg) 
+                        per census tract per year) is as follows: ",
+                        
+                        tags$img(id="fert_calc2", type = "png", src = "fert_calc2.png", 
+                                 style="display: block; margin-left: auto; margin-right: auto; width: 1000px")),
+                      
+                      "where LA represents land area (km2) per census tract, NDVI represents the mean NDVI per census 
+                      tract, %F represents the percent of households and public green spaces that use fertilizer, Fused 
+                      represents the amount of fertilizer (kg) used per km2, %Nfertilizer represents the average percent 
+                      of nitrogen in artificial fertilizers used, and Fuptake represents the average fertilizer uptake factor (%).",
+                      
+                   br(),
+                   br(),
+                   br(),
+                   
+                      p(class = "lead",
+                        
+                        "For the purpose of this project, the highest uptake factor was used. The latter incorporated all 
+                        active agricultural fields in Marion County, assuming 100% of them are fertilized during the growing 
+                        season each year. The calculation for fertilizer use in this space (N (kg) per census tract per year) 
+                        is as follows:",
+                        
+                        tags$img(id="fert_calc3", type = "png", src = "fert_calc3.png", 
+                                 style="display: block; margin-left: auto; margin-right: auto; width: 1000px")),
+                      
+                      "where LA represents land area (km2) per census tract, Fused represents the amount of fertilizer (kg) 
+                      used per km2, %Nfertilizer represents the average percent of nitrogen in artificial fertilizers used, 
+                      and Fuptake represents the average fertilizer uptake factor (%). For the purpose of this study, the 
+                      highest uptake factor was used.",
+                   
+                   br(),
+                   br(),
+                   br(),
+                      
+                      p(class = "lead",
+                        
+                        "To find the total amount of nitrogen from fertilizer, the following equation was used:",
+                        
+                        tags$img(id="fert_calc4", type = "png", src = "fert_calc4.png", 
+                                 style="display: block; margin-left: auto; margin-right: auto; width: 700px"))
+                   
+                     ),
+                 
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Food (Food Production & Food Waste)'",
+                   p(class = "lead",
+                     
+                     tags$b("What is the connection between food and nitrogen pollution?"),
+                     
+                     br(),
+                     
+                     "Food can be broken down into Food Production and Food Waste (i.e. How is food created? & How is food wasted?).",
+                     
+                     br(),
+                     br(),
+                     
+                     "Nitrogen is essential for growing food, but too much of it around the world is causing environmental issues. 
+                     Efforts to reduce nitrogen pollution from farming often try to change how farmers work [12]. But applying these policies 
+                     directly on farms is difficult, and farmers are not the only ones involved in the agriculture-food process [12]. 
+                     The role of other parties, like fertilizer producers and wastewater treatment plants, also influences nitrogen loss 
+                     both at the farm and in wider areas [12]. This means policymakers have more options to tackle nitrogen pollution from 
+                     the initial farming stage to the end consumer than they might have initially thought [12].",
+                     
+                     br(),
+                     br(),
+                     
+                     "The USDA reported that in 2010, about 31% or 133 billion pounds of the 430 billion pounds of food available at 
+                     retail and consumer levels in the United States were not consumed [13]. This issue of food waste is not solely due 
+                     to consumers discarding excess food; it begins as early in the process as the farming stage, where some crops are 
+                     left unharvested due to not meeting aesthetic standards [13]. Additionally, food waste occurs due to spoilage or 
+                     being improperly prepared [13].",
+                     
+                     br(),
+                     br(),
+                     
+                     "As bad as this is in terms of not feeding the hungry, wasting food is also wasting energy, water, and 
+                     everything else required to grow, process, transport, and prepare food [13]. Improving resource efficiency would 
+                     also decrease the amount of nitrogen released to the environment [13].",
+                     
+                     br(),
+                     br(),
+                     
+                     "Nitrogen is essential for human life and plays a critical role in our food production system. However, an excess of
+                     nitrogen can lead to a series of environmental challenges. The use of synthetic nitrogen fertilizers has been a 
+                     key factor in supporting the nutritional needs of the planet's increasing population [10]. Yet, the amount of reactive 
+                     nitrogen introduced by humans into the environment exceeds natural outputs by more than five times [13]. This 
+                     excessive introduction of human-derived nitrogen contributes to environmental problems including eutrophication, 
+                     which leads to excessive plant growth in water bodies; hypoxia, characterized by a shortage of dissolved oxygen 
+                     in water; as well as smog, acid rain, and the emission of greenhouse gases [11]."),
+                     
+                     tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                     br(),
+                     
+                     p(class = "lead", tags$b("How do we quantify the amount of nitrogen pollution from food?"),
+                       
+                       br(),
+                       
+                       "The first component of nitrogen export regarding food is food production. 85 specific food 
+                       items were collected with the following data: protein content, virtual N factor, and dollars 
+                       spent on food per year (USD/lb) in each census tract in Marion County from the United States 
+                       Consumer Expenditure Report (CEX, 2019). The dollars spent on food were converted to kilograms 
+                       using average price per kilogram (USD/kg) datasets (BLS, 2017 and USDA, 2018) in order to find 
+                       the amount of nitrogen (kg) in each food item. The following is a simplified equation demonstrating 
+                       the description above:",
+                       
+                       br(),
+                       
+                       tags$img(id="food_calc1", type = "png", src = "food_calc1.png", 
+                                style="display: block; margin-left: auto; margin-right: auto; width: 400px"),
+                   
+                   br(),
+                   br(),
+                   
+                   "as well as the total nitrogen from food bought each year per household:",
+                   
+                   br(),
+                   
+                   tags$img(id="food_calc2", type = "png", src = "food_calc2.png", 
+                            style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                   
+                   "where Nfi is the nitrogen exported from each food item (kg N/year), fiNc is the nitrogen from the 
+                   product weight of food items, fcNc is the nitrogen content from the product weight of food consumed, 
+                   FW is the percentage of food waste, and TNfi is the nitrogen exported from all food items.",
+                   
+                   br(),
+                   br(),
+                   br(),
+                   
+                   p(class = "lead",
+                     
+                     "It is important to note that with an increasing number of people decreasing meat consumption and/or
+                     adopting a vegetarian or vegan diet, this change in lifestyle was incorporated into the calculation above.",
+                     
+                     br(),
+                     br(),
+                     
+                     "The other component of exported nitrogen from food includes food waste. The same 85 specific food 
+                     items were used in each census tract. The summary equation in calculating the exported nitrogen from 
+                     food waste is as follows:",
+                     
+                     tags$img(id="food_calc3", type = "png", src = "food_calc3.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                   
+                   "where TNfw is the nitrogen exported from all food items (kg N/CT/year), FWfi is the nitrogen exported 
+                   from all food waste, FWd is the average quantity of food donated, and FWc is the average quantity of food
+                   composted. "
+                     ), 
+                 
+                 
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Natural Gas'",
+                   p(class = "lead",
+                     
+                     tags$b("What is the connection between natural gas and nitrogen pollution?"),
+                     
+                     br(),
+                     
+                     "Natural gas is another source of nitrogen produced from human activities that upsets the natural balance of the 
+                     environment.",
+                     
+                     br(),
+                     br(),
+                     
+                     "Natural gas is produced via the burning of fossil fuels. When fossil fuels are burned, 
+                     they release nitrogen oxides (N2O) into the atmosphere, which contributes to the formation
+                     of smog and acid rain. The most common nitrogen-related compoiunds emitted into the air by human activities
+                     are collectively referred to as nitrogen oxides. Most of the nitrogen oxides released in the U.S due to
+                     human acitivity are from the burning of fossil fuels."),
+                     
+                     tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                     br(),
+                     
+                   p(class = "lead", tags$b("How do we quantify the amount of nitrogen pollution from natural gas?"),
+                     
+                     br(),
+                     
+                     class = "lead", "To quantify nitrogen pollution from natural gas, we need to gather data from what kinds of things
+                     use and consume natural gas. In this study, natural gas usage (Million British Thermal Units; MMBTU 
+                     consumed) is gathered and  produced from residential, commercial, and industrial buildings.",
+                     
+                     br(),
+                     
+                     tags$li(class = "lead", tags$b("Residential buildings"), "include all types of housing 
+                             (e.g., houses, apartment complexes, townhouses, condos, etc.). "),
+                     tags$li(class = "lead", tags$b("Commercial buildings"), "included the following sectors: 
+                             wholesale trade, retail trade, finance and insurance, real estate, renting, and 
+                             leasing, educational services, healthcare and social assistance, arts, entertainment, 
+                             and recreation, accommodation and food services, and other services. "),
+                     tags$li(class = "lead", tags$b("Industrial buildings"), "included the following sectors: agriculture, 
+                             forestry, fishing, and hunting, mining, quarrying, and oil and gas extraction, utilities, 
+                             construction, manufacturing, transportation and warehousing, information, professional, 
+                             scientific, and technical services, management of companies and enterprises, administrative 
+                             and support and waste management and remediation services, and other services ")),
+                     
+                     tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                     br(),
+                     
+                     p(class = "lead", tags$b("Calculations for Nitrogen Pollution"),
+                       
+                       br(),
+                       
+                       "The total MMBTU of natural gas consumed at residences was calculated by the number of households 
+                       that use natural gas as their primary source of energy in each census tract, the average annual 
+                       natural gas bill per household in Marion County, and the therms-price ratio. Because there is no 
+                       data that lists the number of commercial or industrial buildings per census tract, the total MMBTU 
+                       of natural gas consumed was calculated by the total population per census tract, the total population 
+                       in Marion County, total number of commercial and industrial buildings in Marion County, the average 
+                       annual natural gas bill per household in Marion County, and a therms-price ratio. The NOx and N2O 
+                       emissions for the region (EPA, 2021) and atomic weight conversions were used to determine the N 
+                       emissions from natural gas in each census tract: ",
+                       
+                       tags$img(id="ng_calc1", type = "png", src = "ng_calc1.png", 
+                                style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                     
+                     "where NOxng (N2Ong) represents NOx (N2O) (kg) exported from natural gas per census tract per year, 
+                     H represents number of households (or buildings for commercial and industrial calculations) per census 
+                     tract, MMBTUMC represents, eGRIDNOx (and eGRIDN2O) represents the eGRID emission factor for NOx (and N2O), 
+                     and CNOx (CN2O) represents the conversion of NOx (kg) (N2O (kg)) to N (kg). ",
+                     
+                   
+                   br(),
+                   br(),
+                   br(),
+                   
+                    p(class = "lead", 
+                       
+                       "Nitrogen from natural gas was calculated as follows:",
+                       
+                       tags$img(id="ng_calc2", type = "png", src = "ng_calc2.png", 
+                                style="display: block; margin-left: auto; margin-right: auto; width: 400px"),
+                       
+                       br(),
+                      br(),
+                      
+                       "This calculation was performed for residential, commercial, and industrial buildings in 
+                       each census tract and added together to get the total N (kg) exported by natural gas per 
+                       year as follows:",
+                       
+                       tags$img(id="ng_calc3", type = "png", src = "ng_calc3.png", 
+                                style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                     
+                     "where TNng is the total nitrogen emitted from natural gas from residential, commercial, and 
+                     industrial sources combined, resNng is the total nitrogen emitted from natural gas from residential 
+                     sources, comNng is the total nitrogen emitted from natural gas from commercial sources, and indNng is 
+                     the total nitrogen emitted from natural gas from industrial sources. ",
+                   
+                   hr()
+                       
+                       ),
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Pet (Food Production & Pet Waste)'",
+                   
+                   p(class = "lead", tags$b("What is the connection between pet food production and waste and nitrogen pollution?"),
+                     
+                     br(),
+                     br(),
+                     
+                     tags$b("Pet Food Production"),
+                     br(),
+                     "The production of pet food releases substantial amounts of greenhouse gases, including methane, contributing to 
+                     environmental degradation [14]. The high consumption of meat by pets, especially in the form of unsustainable meat 
+                     sources like beef, pork, chicken, and fish, exacerbates the environmental footprint of pet food production [14]. 
+                     Sustainable alternatives such as plant-based proteins or insect-based ingredients can help reduce the environmental 
+                     impact of pet food production by consuming fewer natural resources and lowering carbon footprints [14]. Efforts to 
+                     improve the sustainability of pet food production are crucial to mitigate nitrogen pollution and minimize the 
+                     environmental harm associated with pet food manufacturing.", 
+                     
+                     br(),
+                     br(),
+                     
+                     tags$b("Pet Food Waste"),
+                     br(),
+                     "Pet waste, particularly dog waste, contributes significantly to nitrogen pollution. Dog feces and urine contain 
+                     high levels of nitrogen, which can lead to overfertilization of the ground in natural environments, causing harm 
+                     to sensitive plants and reducing biodiversity by favoring the growth of resilient species like nettles and hogweed [15].
+                     Dog waste can introduce excessive amounts of nitrogen and phosphorus into ecosystems, comparable to levels from 
+                     farming, industry, and traffic fumes, significantly impacting wildlife and fragile habitats [15].Proper disposal of 
+                     pet waste, such as picking up after dogs and using biodegradable bags or composting, is essential to mitigate 
+                     the environmental impact of nitrogen pollution from pet waste [15]. Efforts to raise awareness among pet owners 
+                     about the fertilization effect of dog waste and promote responsible waste management practices are crucial in 
+                     minimizing the contribution of pet waste to nitrogen pollution and protecting ecosystems from nutrient overloading [15].",
+                     
+                     
+                     ),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   
+                   p(class = "lead", tags$b("How do we quantify the amount of nitrogen pollution from pet food production?"),
+                     
+                     br(),
+                     
+                     "For the calculation of pet food production specifically, it is based off a national scale in order to estimate 
+                     the number of dogs/cats in each census tract. The average number of cats and dogs per person in the United 
+                     States (Okin, 2017) and the population of the census tracts (CEX, 2019) were used to estimate the number of 
+                     dogs and cats in each census tract.",
+                     
+                     br(),
+                     br(),
+                     
+                     "The total N exported from pet waste in Marion County included two pet types: dogs and cats as well as the 
+                     average number of households had pets, and the average number of pets each pet-having household had. These 
+                     averages are based off a national scale to estimate the number of pets in each census tract. Additionally, 
+                     it was assumed that all pet waste (urine and feces) is deposited on the land surface since most excreted N 
+                     is contained in urine (Allard, 1981). "),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   br(),
+                   
+                   p(class = "lead", tags$b("Calculations for Nitrogen Pollution (Pet Food Production)"),
+                     
+                     br(),
+                     
+                     "From this, the average amount of pet food consumed per year (kg) and ingredients of food products in dog 
+                     and cat food (e.g., chicken, beef, grains, and vegetables) was gathered (Baldwin et al., 2010) to determine 
+                     the amount of pet food bought and consumed in each census tract. The nitrogen risk assessment of food 
+                     production for pet food was treated the same as human food. The final step of the pet food N footprint is 
+                     computed as: ",
+                     
+                     tags$img(id="petfprod_calc1", type = "png", src = "petfprod_calc1.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                   
+                   "where Npfp is the N exported via pet food production in the census tract (kg N), H is the number of 
+                   households per census tract, Hwp is the average percentage of households with pets (%), Ptavg is the 
+                   average number of pets per pet-having household, Favg is the average amount of pet food per pet (kg/yr), 
+                   W is the average percentage of waste produced by pet food manufacturing facilities, Pnc is the protein 
+                   content of the pet food (kg N), Nc is the nitrogen content of the pet food (kg N), and VN is the virtual 
+                   N factor for both dog and cat food. This calculation was done for each ingredient of the pet food for each 
+                   census tract. ",
+                   
+                   br(),
+                   br(),
+                   br(),
+                   
+                   p(class = "lead",
+                     
+                     "The total N exported via pet food production was then calculated as follows:",
+                     
+                     tags$img(id="petfprod_calc2", type = "png", src = "petfprod_calc2.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                     
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   br(),
+                   
+                   p(class = "lead", tags$b("Calculations for Nitrogen Pollution (Pet Waste)"),
+                     
+                     br(),
+                     
+                     "The N content of pet food (16% of all food consumed; all assumed to be excreted; USDA, 2018) 
+                     and the N uptake factor of turfgrass (50%) (Hermanson et al.,1994) were used to determine the 
+                     exported N via pet waste:",
+                     
+                     br(),
+                     br(),
+                     
+                     tags$img(id="petwaste_calc1", type = "png", src = "petwaste_calc1.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                   
+                   "where Npw is the N exported via pet waste in the census tract (kg N), H is the number of households 
+                   per census tract, Hwp is the average percentage of households with pets (%), Ptavg is the average number 
+                   of pets per pet-having household, Favg is the average amount of pet food per pet (kg/yr), Pnc is the protein 
+                   content of the pet food (kg N), Nc is the nitrogen content of the pet food (kg N), and Fuptake is the uptake 
+                   factor of turfgrass (%).",
+                   
+                   br(),
+                   br(),
+                   br(),
+                   
+                   p(class = "lead",
+                     
+                     "The total N exported via pet waste was then calculated as follows:",
+                     
+                     tags$img(id="petwaste_calc2", type = "png", src = "petwaste_calc2.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px"),
+                     hr()
+                     ),
+
+                 ),
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Transportation'",
+                   
+                   p(class = "lead", tags$b("What is the connection between transportation and nitrogen pollution?"),
+                     
+                     br(),
+                     
+                     "Transportation, including the burning of fuel in vehicles, is a major source of nitrogen oxides (NOx) 
+                     that contribute to air pollution, leading to the formation of ozone and nitrogen deposition [16]. Nitrogen dioxide 
+                     (NO2), a pollutant associated with transportation, is a concern in urban environments globally, with high 
+                     concentrations found in areas with heavy traffic and industrial activities [16]. The reduction of ambient NO2 levels 
+                     due to transportation restrictions during events like the Covid-19 pandemic highlights the impact of transportation 
+                     on nitrogen pollution and air quality [16]. Efforts to reduce greenhouse gas emissions from transportation, 
+                     improve fuel efficiency, and implement cleaner vehicle technologies are essential to mitigate nitrogen pollution 
+                     and its environmental consequences [16]."),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   
+                   
+                   p(class = "lead", tags$b("How do you quantify nitrogen pollution from transportion?"),
+                     
+                     br(),
+                     
+                     "The total N exported from transportation in Marion County included all miles traveled within 
+                     census tract limits. Three types of drivers were included: residential, non-residential, and 
+                     commercial drivers as well as two types of fuel: diesel and gasoline. Vehicles included the following 
+                     vehicle types: light trucks, motorcycles, cars, buses, single unit, and combination unit trucks."),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   br(),
+                   
+                   p(class = "lead", tags$b("Calculations for Nitrogen Pollution"),
+                     
+                     br(),
+                     
+                     "The NOx and N2O emissions for each transport type and fuel type (EPA, 2021) and atomic weight 
+                     conversions were used to determine total N exported from transportation in each census tract. The 
+                     following equation shows the general calculation used: ",
+                     
+                     tags$img(id="transp_calc1", type = "png", src = "transp_calc1.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                   
+                   "where Ntransp is the N exported from vehicles within that census tract (kg N), Mt is the miles 
+                   traveled by a vehicle type in each census tract, Ft (%) is the fuel type (diesel or gasoline), eGRID 
+                   represents the eGRID emission factor (NOx/N2O), and C represents the conversion of NOx (kg) (or N2O (kg)) 
+                   to N (kg).",
+                   
+                   p(class = "lead",
+                     
+                     "This calculation was performed for each vehicle type and fuel type in each census tract in order to 
+                     get the total N exported from transportation:",
+                     
+                     tags$img(id="transp_calc2", type = "png", src = "transp_calc2.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px"))
+                
+                 ),
+                 
+                 
+                 
+                 conditionalPanel(
+                   condition = "input.dropdown == 'Wastewater'",
+                   
+                   p(class = "lead", tags$b("What is the connection between wastewater and nitrogen pollution?"),
+                     
+                     br(),
+                     
+                     "Wastewater plays a significant role in contributing to nitrogen pollution. When sewage, which contains nitrogen 
+                     from human waste and other sources, is not adequately treated, it becomes a major source of nitrogen pollution [17].
+                     Nitrogen pollution from wastewater can lead to environmental challenges, such as the creation of 'dead zones' in 
+                     bodies of water due to excessive nutrient levels that promote the growth of algae and harm aquatic life [17]. 
+                     Upgrading wastewater treatment facilities and improving household septic systems are crucial steps in reducing 
+                     nitrogen pollution from sewage and restoring the health of water bodies [17] Advanced treatment processes like 
+                     denitrification can remove a substantial amount of nitrogen from wastewater, significantly improving water 
+                     quality and reducing the environmental impact of nitrogen pollution [17]. Efforts to address nitrogen pollution 
+                     from wastewater are essential for protecting ecosystems, public health, and water resources from the harmful 
+                     effects of excess nitrogen contamination [17]."
+                     
+                   ),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   
+                   p(class = "lead", tags$b("How do you quantify nitrogen pollution from wastewater?"),
+                     
+                     br(),
+                     
+                     "Wastewater refers to the N released following wastewater treatment of sanitary effluent from 
+                     Marion County residents. Wastewater generated in Marion County is treated by four surface water 
+                     treatment facilities and two advanced wastewater treatment facilities through Citizens Energy Group 
+                     (Citizens Energy Group, 2022). "
+                     
+                     ),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   br(),
+                   
+                   p(class = "lead", tags$b("Calculations for Nitrogen Pollution"),
+                     
+                     br(),
+                     
+                     "The total gallons of wastewater treated from Marion County residents and businesses, in 2019 
+                     was approximately 132,313 million gallons (calculation, Citizens Energy Group). The total gallons 
+                     treated were divided among census block groups on a per capita basis (CEX, 2019). This was then 
+                     converted into kg N lost to the environment through the treatment process as: ",
+                     
+                     tags$img(id="ww_calc1", type = "png", src = "ww_calc1.png", 
+                              style="display: block; margin-left: auto; margin-right: auto; width: 400px")),
+                   
+                   "where Nwastewater is the wastewater footprint of the census tract (kg N), WW is the amount of wastewater 
+                   treated from the census tract (gal), MCpop is the population of Marion County, CTpop is the population of 
+                   each census tract, Nw is the nitrogen content of wastewater (kg N), and R is the removal factor at the sewage 
+                   treatment plants (%).",
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;")
+                   
+                 )
+
+        ),
+        tabPanel("Study Site", 
+                 h2(style = "text-align: center", "Marion County, IN",
+                    tags$a(
+                      href = "https://www.in.gov/core/mylocal/marion_county.html",
+                      tags$img(src = "marion_county.png", 
+                             style = "height: 200px"))),
+                 tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                 
+                 
+                 p(class = "lead", tags$b("Why Here?"),
+                
+                   p(class = "lead", 
+                   column(12, tags$text(style="font-size: 22px;", "Marion County, Indiana, was selected for the location of this case study for nitrogen pollution 
+                   research for several reasons. Firstly, it is part of a larger regional hotspot where excessive 
+                   nitrogen application on agricultural lands is a significant concern [18]. This region, which spans 
+                   across Illinois, Indiana, Missouri, and Wisconsin, has been identified as having one of the 
+                   highest excesses of nitrogen fertilizer application, making it an essential area for understanding 
+                   the broader impacts of agricultural practices on nitrogen pollution [18].",
+                   
+                   br(),
+                   br(),
+                   
+                   "Below are articles describing the same study that discuss hotspots in the United States
+                   where there is excessive nitrogen application. The left one is the original scientific study, and the
+                          right one is an article describing the study from Anthropocene Magazine.",
+                   
+                   br(),
+                   br(),
+                   br(),
+                   
+                   )),
+                   column(6, tags$a(
+                     href="https://iopscience.iop.org/article/10.1088/1748-9326/abd662/meta", 
+                     tags$img(src="nitro_art1.png",
+                              title="Scientific Article",
+                              width="450",
+                              height="250",
+                              style = "margin-right: auto; margin-left: auto;"),
+                     tags$figcaption("Figure 7: Scientific Article")
+                   )),
+                   
+                   column(6, tags$a(
+                     href="https://www.anthropocenemagazine.org/2021/02/a-map-of-excess-nitrogen-use-across-the-us-reveals-where-and-how-to-act/", 
+                     tags$img(src="nitro_art2.jpeg",
+                              title="Magazine Article",
+                              width="450",
+                              height="250",
+                              style = "margin-right: auto; margin-left: auto;"),
+                     tags$figcaption("Figure 8: Magazine Article"),
+                     br(),
+                     br(),
+                   )),
+                   
+                   br(),
+                   br(),
+                   ),
+                   
+                   
+                 br(),
+                 br(),
+                   
+                   p(class = "lead",
+                     br(),
+                     br(),
+                   column(12, tags$text(style= "text-align: left; font-size: 22px", 
+                   "Moreover, the area's environmental challenges extend to water quality issues, with 
+                          various contaminants affecting the water supply. This includes not only nitrogen but also 
+                          other harmful substances, which collectively pose risks to human health and the environment. 
+                          The presence of such a diverse range of pollutants makes Marion County a critical point for 
+                          studying the intersections between agricultural practices, water quality, and public health.",
+                   
+                   br(), 
+                   br(),
+                   
+                   "More information on Marion County, IN water quality can be found at the following websites:",
+                   
+                   tags$ul(
+                     tags$li(tags$a(href="https://marionhealth.org/surface-water-program/", 
+                                    "Marion County Public Health Department (MCPHD) Surface Water Program!")),
+                      tags$text(style= "text-indent: 50px;", "- This program actively monitors the water quality of rivers and streams in 
+                                Marion County, testing for various contaminants. This includes routine sampling for bacteria and chemical 
+                                parameters, responding to pollution complaints, and evaluating the impact of activities like combined 
+                                sewer overflows on water quality. The program aims to safeguard public health by ensuring the water 
+                                in the county's natural waterways remains clean and safe for the community and the environment.",
+                                br()),
+                      br(),
+                     tags$li(tags$a(href = "https://raeabail.github.io/mc_waterquality/index.html", 
+                                     "Water Quality Analysis of MCPHD Surface Water Data")),
+                      tags$text(style= "text-indent: 50px;", "- This webpage walks users step-by-step on an analysis of the surface water
+                                data that the MCPHD has collected over the last 30 years.")),
+                   
+                   br(),
+                   
+                   "Additionally, Marion County's situation reflects broader national and global challenges related to managing 
+                   nitrogen use in agriculture and mitigating its environmental impacts. The county's inclusion in a national 
+                   study identifying hotspots for nitrogen overuse highlights the potential for targeted interventions in this 
+                   area [18]. Understanding the specific conditions and contributing factors in Marion County can provide valuable 
+                   insights into effective strategies for reducing nitrogen pollution and improving environmental and public 
+                   health outcomes not just locally but also in similar contexts elsewhere. ",
+                   
+                   br(),
+                   br(),
+                   
+                   "The research interest in Marion County and similar regions emphasizes the urgent need for integrated 
+                   approaches to agricultural management, water quality improvement, and environmental protection. 
+                   By focusing on such areas, scientists and policymakers can develop and implement more effective measures 
+                   to address the complex challenges posed by nitrogen pollution and other environmental contaminants. ",
+                   
+                   br(),
+                   br(),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                  
+                   ))),
+                 
+                 p(class = "lead", tags$b("Important Information about the Study Site"),
+                   br(),
+                p(class = "lead", 
+                 column(6, tags$text(style="font-size: 22px;", tags$ul(
+                   tags$li("The Upper White River Watershed is the main watershed in Marion County, IN. A river, 
+                           known as the White River, runs right through the east centeral part of the county and
+                           has a drainage area of a little over ~7,128 km^2 [19]."),
+                   tags$li("The watershed covers 16 different Indiana counties and is subdivided into 114 subbasins [19]."),
+                   tags$li("It is 
+                   the largest watershed contained entirely in the state of Indiana with an estimated population 
+                   from the 2019 census data of about 2.87 million, which is nearly 44% of Indiana’s total population [19].")))),
+                 
+                 column(6, tags$text(style= "align: center; font-size: 22px"), 
+                   tags$img(src="upperwhitewshed.png",
+                            title="The Upper White River Watershed",
+                            width="528",
+                            height="408",
+                            style = "margin-right: auto; margin-left: auto; margin-top: -50px; margin-bottom: auto"),
+                   tags$figcaption(style= 'text-align: right; margin-right: 290px', "Figure 9: The Upper White River Watershed")
+                 )),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                   
+                   br(),
+                   br(),
+                 
+                 p(class = "lead",
+                   br(),
+                   br(),
+                   column(12, tags$text(style="font-size: 22px;", 
+                                        br(),
+                     tags$ul(
+                     tags$li("The topography is flat to undulating, with an average slope of about 1.0% [19]."),
+                     tags$li("The soils are mainly productive soils (e.g., alfisols) developed in glacial till [19]."),
+                     tags$li("The primary agricultural crops are corn and soybean, along with other crops such as wheat, 
+                             oats, barley, and sorghum [19]."),
+                     tags$li("Urban development is concentrated in the Indianapolis area due to its population 
+                            growth and increases in infrastructure [19]."),
+                     br(),
+                     ))),
+                   
+                   br(),
+                   br(),
+                   
+                   column(12, tags$text(style= "align: center; font-size: 22px"), 
+                          tags$img(src="ag_image.jpeg",
+                                   title="Indiana Agricultural Crops",
+                                   width="600",
+                                   height="350",
+                                   style = "margin-right: auto; margin-left: 350px; margin-top: auto; margin-bottom: auto"),
+                          tags$figcaption(style= 'text-align: center; margin-left: -90px;', "Figure 10: Corn, Soybeans, Wheat, and Sorghum"),
+                          
+                          br(),
+                          br(),
+                   )),
+                
+                br(),
+                br(),
+                   
+                p(class = "lead",
+                  
+                  column(8, tags$text(style="font-size: 22px;", tags$ul(
+                    tags$li("The climate in Indiana is classified as continental with high humidity, frequent changes in temperature, 
+                   and significant local precipitation."),
+                    tags$li("The average annual temperature is about 11.1C, with January being the 
+                   coldest month and July being the warmest in a typical year."),
+                    tags$li("The average annual precipitation is around 965 to 1016 mm along divergent parts of the watershed."),
+                    tags$li("About 59% of the precipitation occurs during the crop growing 
+                   season of April through October, with May typically being the wettest month and February being the driest."),
+                    tags$li("It 
+                   has been projected that Indiana will experience wetter winters/springs and drier summers/falls, and more frequent 
+                   and extreme weather events due to climate change."),
+                    tags$li("More information about Indiana's climate or future climate conditions can be found:",
+                             tags$i(class = "fa-solid fa-arrow-right-long",
+                                  style = "text-indent: 10px; font-size: 28px; transform: rotate(-0.035turn);
+                                  color: #c4102f;",
+                                  
+                            ))))),
+                  
+                  column(4, tags$text(style= "align: center; font-size: 22px"), 
+                         tags$img(src="futureclimate.png",
+                                  title="Future Climate Conditions in Indiana",
+                                  width="450",
+                                  height="300",
+                                  style = "margin-right: auto; margin-left: auto; margin-top: 0px; margin-bottom: auto"),
+                         tags$figcaption(tags$a(style= 'text-align: center; margin-left: 20px', 
+                                                href='https://hri.eri.iu.edu/?_gl=1*ctj67f*_ga*MjI5MDg3MTI4LjE2OTk0MDI4Mzg.*_ga_61CH0D2DQW*MTcwOTA4NDg0OC4yLjEuMTcwOTA4NTQ0Ny40Mi4wLjA',
+                                                "Figure 11: Future Climate Conditions in Indiana from HRI"))
+                  )),
+                  
+                   br(),
+                   br(),
+               
+                p(class = "lead",
+                  
+                  column(12, tags$text(style="font-size: 22px;",
+                                       
+                                       br(),
+                                       br(),
+                
+                   "Finally, water quality is a significant concern in this watershed. Nutrients and eutrophication have been an on-going 
+                   issue, and the effect extends further downstream as the White River flows down and joins the Mississippi River [20]. 
+                   As such, downstream aquatic environments including the dead zone in Gulf of Mexico could potentially be traced 
+                   back to White River nutrient loadings [20].", 
+                   br(),
+                   
+                   tags$hr(style = "border-top: 1.5px solid #bee8ff;")
+                   )))))
+                 
+        ),
+        
+                 tabPanel("Map Tool", 
+                          h2(style = "text-align: center", "Map Tool"),
+                          tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                 
+                 actionButton("btn_action", "START HERE", icon("check")),
+                    tags$style("#btn_action {color: #183071; background-color: #ffffff; border-color: #183071;}
+                                #btn_action:hover {background-color: #f5f5f5; color: #e84b47; border-color: #f5f5f5;}",
+                               
+                               br()),
+              
+                 br(),
+                 br(),
+                 
+                 selectInput("CenMaps_vars",
+                             label = "Choose a Source",
+                             choices = c("All" = "Totals",
+                                         "Electricity" = "Electricity", 
+                                         "Fertilizer" = "Fertilizer", 
+                                         "Food Production" = "Food_Production", 
+                                         "Food Waste" = "Food_waste",
+                                         "Natural Gas" = "Natural_Gas", 
+                                         "Pet Food Production" = "Pet_food_production", 
+                                         "Transportation" = "Transportation", 
+                                         "Wastewater" = "Wastewater"),
+                             selected = "All",
+                             ),
+                 # Embed the Leaflet map
+                 leafletOutput("CenMaps_map", height = 700, width = 1400),
+     
+        ),         
+        
+        tabPanel("Results",
+                 
+                 h2(style = "text-align: center", "Major Results"),
+                 tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                 
+                 p(class = "lead", 
+                   tags$text(style = "text-align: center;", 
+                     "Below are results from the map tool and additional results from the study that are interesting!"),
+                   
+                   br(),
+                   br(),
+                   tags$b("Marion County total nitrogen (N) results and per capita results "),
+                   
+                   br(),
+                   br(),
+                   
+                   tags$img(id="piechart", type = "png", src = "piechart.png", 
+                            style="display: block; margin-left: auto; margin-right: auto; width: 400px",
+                            tags$figcaption(style= "text-align: center;",
+                              "Figure 12: Percentages of N export from 9 sources in Marion County, IN")),
+                   
+                   br(),
+                   
+                   tags$li(style = "font-size: 22px;", "The total N footprint of Marion County, IN was 73,799,555 kg N/yr and 198 kg N per 
+                           household in 2019. It is important to note that the per capita nitrogen risk assessment 
+                           is an estimate including all activities occurring in the area including businesses and 
+                           commuter contributions."),
+                   tags$li(style = "font-size: 22px;", "The largest contributor to nitrogen export in Marion County was food production and 
+                           food waste at 56%, with meat products being the most significant. The next largest 
+                           contributor was the energy sector (electricity, natural gas, and transportation) at 37%."),
+                  tags$li(style = "font-size: 22px;", "The other sources are made of smaller portions of the risk assessment including fertilizer use (1%), 
+                          wastewater (1%), and pet food and waste (5%)."),
+                  
+                  br(),
+                  tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                  br(),
+                  
+                  tags$b(style = "font-size: 22px;", "Distribution of the nitrogen risk assessment model among the census tracts"),
+                  
+                  br(),
+                  br(),
+                  
+                  tags$li(style = "font-size: 22px;", "The total N varied among census tracts due to a variety of factors 
+                          such as population, transit due to jobs and lifestyle, and the difference between the number of 
+                          residential, commercial, and industrial buildings. The range was 92,898 - 1,415,203 kg N with an 
+                          average of about 329,462 kg N."),
+                  tags$li(style = "font-size: 22px;", "The average nitrogen output per household in Marion County was 198 kg N per 
+                          year in 2019, with variation among census tracts ranging from 165 to 293 kg N per household."), 
+                  tags$li(style = "font-size: 22px;", "There was not much variation in the distribution among sectors between the 
+                          different census tracts. As a rule, the more households within a census tract, the more nutrient export 
+                          from their tract."),
+                  
+                  br(),
+                  tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                  br()
+                 
+                 )),
+      
+        tabPanel("Impact to the Environment",
+                 
+        actionButton("btn_action2", "START HERE", icon("check")),
+        tags$style("#btn_action2 {color: #183071; background-color: #ffffff; border-color: #183071;}
+                                #btn_action2:hover {background-color: #f5f5f5; color: #e84b47; border-color: #f5f5f5;}",
+                            
+                            br(),
+                   br()),
+        
+        br(),
+        br(),
+        
+        selectInput("nitro_pathway_btn", "Choose a Source:",
+                    choices = c("Introduction", "Electricity", "Fertilizer", "Food (Production and Waste)", "Natural Gas",
+                                "Pet Food Production", "Pet Waste", "Transportation", "Wastewater")),
+        uiOutput("dynamicContent"),
+     ),
+        
+        tabPanel("Conclusion",
+                 h2(style = "text-align: center", "Conclusions"),
+                 tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+        p(class = "lead",
+          tags$text("The final tab!! We have made it. This tab is all about conclusions. Conclusions on the nitrogen itself,
+                    on the nitrogen cycle, sources of nitrogen, and how nitrogen pollution moves and transforms."),
+          
+          br(),
+          p(class = "lead",
+            tags$text("The big difference in this tab is that I won't be giving you any conclusions... By now, you should
+                      have some of your own and you might even have questions (which are even better)! Below are two text
+                      boxes where you can submit (1) your own conclusions and (2) your questions. If you are in a classroom
+                      setting, you can even share your conclusions and questions with your friends, peers, and teachers.")),
+          
+          br(),
+          
+          column(6, textAreaInput("conclusions", "Your Conclusions:", value = "", rows = 5),
+                 actionButton("submit1", "Submit"),
+                tags$style("#submit1 {color: #183071; background-color: #ffffff; border-color: #183071;}
+                                #submit1:hover {background-color: #f5f5f5; color: #e84b47; border-color: #f5f5f5;}"),
+                 textOutput("confirmation1")),
+          
+          column(6, textAreaInput("questions", "Your Questions:", value = "", rows = 5),
+                 actionButton("submit2", "Submit"), 
+                 tags$style("#submit2 {color: #183071; background-color: #ffffff; border-color: #183071;}
+                                #submit2:hover {background-color: #f5f5f5; color: #e84b47; border-color: #f5f5f5;}"),
+                 textOutput("confirmation2"),
+                 br(),
+                 br(),
+                 br()),
+          br(),
+          br(),
+          br()
+          ),
+        
+                 ),
+                 
+        
+       tabPanel("References",
+                h2(style = "text-align: center;", "References"),
+                tags$hr(style = "border-top: 1.5px solid #bee8ff;"),
+                 
+                 p(class = "lead", "There are three lists of references. One contains references for the information in this site.
+                   The second contains references for the images in this site. The third contains references for the information 
+                   and data used in the calculated assessment and paper."),
+                 
+                 selectInput("ref", label = "Choose a Reference List:",
+                             choices = c("Site Information",
+                                         "Paper Information and Data Used")),
+                 
+                 conditionalPanel(
+                   condition = "input.ref == 'Site Information'",
+                   
+                     tags$li(style = "font-size: 22px;", "[1] Britto, D. T., and Kronzuker, H. J. 2002. NH4+ toxicity in higher plants: a critical review. J. Plant Physiol. 159:567–84. doi: 10.1078/0176-1617-0774"),
+                             
+                     tags$li(style = "font-size: 22px;","[2] Weathers, K. C., Groffman, P. M., Dolah, E. V., Bernhardt, E., Grimm, N. B., McMahon, K., et al. 2016. Frontiers in ecosystem ecology from a community perspective: the future is boundless and bright. Ecosystems 19:753–70. doi: 10.1007/s10021-016-9967-0"), 
+                             
+                     tags$li(style = "font-size: 22px;","[3] Brady, N., and Weil, R. 2010. “Nutrient cycles and soil fertility,” in Elements of the Nature and Properties of Soils, 3rd Edn, ed V. R. Anthony (Upper Saddle River, NJ: Pearson Education Inc.), 396–420."),
+                             
+                      tags$li(style = "font-size: 22px;","[4] John Emsley, Nature’s Building Blocks: An A-Z Guide to the Elements, Oxford University Press, New York, 2nd Edition, 2011. Thomas Jefferson National Accelerator Facility - Office of Science Education, It’s Elemental - The Periodic Table of Elements, accessed December 2014."), 
+                             
+                      tags$li(style = "font-size: 22px;","[5] Aczel, M.R. 2019. “What Is the Nitrogen Cycle and Why Is It Key to Life?” Front. Young Minds. 7:41. doi: 10.3389/frym.2019.00041. "),
+                             
+                     tags$li(style = "font-size: 22px;","[6] Peoples, M. B., Herridge, D. F., and Ladha, J. K. 1995. Biological nitrogen fixation: an efficient source of nitrogen for sustainable agricultural production? Plant Soil 174:3–28. doi: 10.1007/BF00032239."), 
+                             
+                     tags$li(style = "font-size: 22px;","[7] Xianbiao, L., Genmei, L., Yijie, Z., Wenjing, L., Peng, G., Shiyuan, F., Tiantian, K., Dongfan, T., Dongyao, S. & Zhuo, S. 2023. “Nitrogen mineralization and immobilization in surface sediments of coastal reclaimed aquaculture ecosystems.” Frontiers in Marine Science. 9:1-16. https://doi.org/10.3389/fmars.2022.1093279"), 
+                             
+                     tags$li(style = "font-size: 22px;","[8] Ward, B.B. (2011). Nitrification: An Introduction and Overview of the State of the Field. In Nitrification (eds B.B. Ward, D.J. Arp and M.G. Klotz). https://doi.org/10.1128/9781555817145.ch1"), 
+                             
+                     tags$li(style = "font-size: 22px;","[9] Ward, B.B. Nitrification and denitrification: Probing the nitrogen cycle in aquatic environments. Microb Ecol 32, 247–261 (1996). https://doi.org/10.1007/BF00183061"),             
+                             
+                      tags$li(style = "font-size: 22px;","[10] Bijay-Singh, Craswell, E. Fertilizers and nitrate pollution of surface and ground water: an increasingly pervasive global problem. SN Appl. Sci. 3, 518 (2021). https://doi.org/10.1007/s42452-021-04521-8"),              
+                             
+                     tags$li(style = "font-size: 22px;","[11] Smith, V.H., Tilman, G.D. & Nekola, J.C. 1999. Eutrophication: impacts of excess nutrient inputs on freshwater, marine, and terrestrial ecosystems. Environmental Pollution. 100:1-3. https://doi.org/10.1016/S0269-7491(99)00091-3."), 
+                             
+                     tags$li(style = "font-size: 22px;","[12] Sheperd, M. & Chambers, B. 2007. Managing nitrogen on the farm: the devil is in the detail. Journal of Science of Food and Agriculture. https://doi.org/10.1002/jsfa.2775 "),
+                             
+                      tags$li(style = "font-size: 22px;","[13] Buzby, J. C., Wells, H. F. & Hyman, J. 2014. The Estimated Amount, Value, and Calories of Postharvest Food Losses at the Retail and Consumer Levels in the United States. Economic Information Bulletin. https://www.ers.usda.gov/publications/pub-details/?pubid=43836#:~:text=In%20the%20United%20States%2C%2031,%24161.6%20billion%20using%20retail%20prices."), 
+                             
+                             
+                             
+                       tags$li(style = "font-size: 22px;"," [14] Pedrinelli, V., Teixeira, F.A., Queiroz, M.R. et al. Environmental impact of diets for dogs and cats. Sci Rep 12, 18510 (2022). https://doi.org/10.1038/s41598-022-22631-0"), 
+                             
+                      tags$li(style = "font-size: 22px;","[15] Hobbie, S. E., Finlay, J. C., Janke, B. D., Nidzgorski, D. A., Millet, D. B., and Baker, L. A.: Contrasting nitrogen and phosphorus budgets in urban watersheds and implications for managing urban water pollution, P. Natl. Acad. Sci. USA, 114, 4177–4182, 2017."), 
+                             
+                                             tags$li(style = "font-size: 22px;","[16] Restrepo, C. E. 2021. Nitrogen Dioxide, Greenhouse Gas Emissions and Transportation in Urban Areas: Lessons From the Covid-19 Pandemic. Frontiers in Environmental Science. 9. https://www.frontiersin.org/articles/10.3389/fenvs.2021.689985 "),
+                             
+                            tags$li(style = "font-size: 22px;"," [17] Usman, M., Sanaullah, M., Ullah, A. et al. Nitrogen Pollution Originating from Wastewater and Agriculture: Advances in Treatment and Management. Reviews Env.Contamination (formerly:Residue Reviews) 260, 9 (2022). https://doi.org/10.1007/s44169-022-00010-0 "),
+                             
+                                                     tags$li(style = "font-size: 22px;","[18] Roy, E. D., Wagner, C. R. H. & Niles, M. T. 2021. Hot spots of opportunity for improved cropland nitrogen management across the United States. Environmental Research Letters. 16(3). https://doi.org/10.1088/1748-9326/abd662 "),
+                             
+                            tags$li(style = "font-size: 22px;"," [19] Bowling, Laura C.; Widhalm, Melissa; Cherkauer, Keith A.; Beckerman, Janna; Brouder, Sylvie; Buzan, Jonathan; Doering, Otto; Dukes, Jeffrey; Ebner, Paul; Frankenburger, Jane; Gramig, Benjamin; Kladivko, Eileen J.; Lee, Charlotte; Volenec, Jeffrey; and Weil, Cliff, 'Indiana’s Agriculture in a Changing Climate: A Report from the Indiana Climate Change Impacts Assessment' (2018). Agriculture Reports.Paper 1. http://dx.doi.org/10.5703/1288284316778"), 
+                             
+                                                             tags$li(style = "font-size: 22px;","[20] Welcome to the Marion County Public Health Department. (n.d.). Welcome to the Marion County Public Health Department. Retrieved September 7, 2023, from https://marionhealth.org/ "),
+                               
+                              tags$li(style = "font-size: 22px;"," [21] Robert W. Howarth, Elizabeth W. Boyer, Wendy J. Pabich, and James N. Galloway 'Nitrogen Use in the United States from 1961–2000 and Potential Future Trends,' AMBIO: A Journal of the Human Environment 31(2), 88-96, (1 March 2002). https://doi.org/10.1579/0044-7447-31.2.88 "),
+                     ),
+                 
+                 conditionalPanel(
+                   condition = "input.ref == 'Paper Information and Data Used'",
+                   p(class = "lead",
+                     
+                     tags$li(style = "font-size: 22px;", "Allard, A. W. 1981. Lawn burn from dog urine. Canine Practice. 8(2): 26-32."),  
+
+                     tags$li(style = "font-size: 22px;", "Baldwin, K., et al. (2010). 'AAHA Nutritional Assessment Guidelines for Dogs and Cats.' Journal of the American Animal Hospital Association 46(4): 285-296."), 
+
+                     tags$li(style = "font-size: 22px;", "BLS 2017 BLS Data Finder 1.1: Consumer Price Index (Washington, DC: United States Department of Labor: Bureau of Labor Statistics)"), 
+
+                     tags$li(style = "font-size: 22px;", "Boone, C. G., et al. (2012). 'A comparative gradient approach as a tool for understanding and managing urban ecosystems.' Urban Ecosystems 15(4): 795-807."), 
+
+                     tags$li(style = "font-size: 22px;", "Boyer, E.W., Goodale, C.L., Jaworski, N.A., Howarth, R.W. 2002. Anthropogenic nitrogen sources and relationships to riverine nitrogen export in the northeastern U.S.A. Biogeochemistry. 57/58:137-169."),  
+
+                     tags$li(style = "font-size: 22px;", "CEX 2019 Consumer Expenditure Surveys (Washington, DC: United States Department of Labor: Bureau of Labor Statistics) https://www.bls.gov/cex/"),  
+
+                     tags$li(style = "font-size: 22px;", "Citizens Energy Group 2022 Wastewater Database (Indianapolis, IN: Utility Service Company) https://info.citizensenergygroup.com/wastewater"),  
+
+                     tags$li(style = "font-size: 22px;", "Dalu, T., Wasserman, R.J., Magoro, M.L., Froneman, P.W., Weyl, O.L.F. River nutrient water and sediment measurements inform on nutrient retention, with implications for eutrophication. Science of The Total Environment. 684: 296-302. https://doi.org/10.1016/j.scitotenv.2019.05.167."),  
+
+                     tags$li(style = "font-size: 22px;", "Doster, E., Zitomer, R. 2013. Eutrophication: causes, consequences, and controls in aquatic ecosystems. Nature Education Knowledge. 4(4):10-17."),   
+
+                     tags$li(style = "font-size: 22px;", "Dukes, E.S.M., Galloway, J.N., Band, L.E., Cattaneo, L.R., Groffman, P.M., Leach, A.M., Castner, E.A. 2020. A community nitrogen footprint analysis of Baltimore City, Maryland. Environmental Research Letters. 15 075007."),  
+
+                     tags$li(style = "font-size: 22px;", "EPA 2021 eGRID Summary Tables 2019 (Washington, DC: Environmental Protection Agency) https://www.epa.gov/egrid/download-data"),   
+
+                     tags$li(style = "font-size: 22px;", "Galloway J.N., Winiwarter, W., Leip, A., Leach A.M., Bleeker, A., Erisman, J.W. 2014. Nitrogen footprints: past, present and future. Environmental Research Letters. 9: 1-11. doi:10.1088/1748-9326/9/11/115003"),  
+
+                     tags$li(style = "font-size: 22px;", "Galloway, J. N. and E. B. Cowling (2002). 'Reactive Nitrogen and The World: 200 Years of Change.' AMBIO: A Journal of the Human Environment 31(2): 64-71, 68."),  
+
+                     tags$li(style = "font-size: 22px;", "Galloway, J. N., et al. (2018). Nitrogen: Cascading Through Time. 2018: B41B-05."),  
+
+                     tags$li(style = "font-size: 22px;", "Galloway, J.N. 1998. The global nitrogen cycle: changes and consequences. Environmental Pollution. 102(1): 15-24. https://doi.org/10.1016/S0269-7491(98)80010-9."),  
+
+                     tags$li(style = "font-size: 22px;", "Goolsby, D. A. (2000). 'Mississippi Basin nitrogen flux believed to cause Gulf hypoxia.' Eos, Transactions American Geophysical Union 81(29): 321-327."),  
+
+                     tags$li(style = "font-size: 22px;", "Gu, B., Leach, A.M., Ma, L., Galloway, J.N., Chang, S.X., Ge, Y., Chang, J. 2013. Nitrogen Footprint in China: Food, Energy, and Nonfood Goods. Environmental Science & Technology. 47: 9217-9224."),   
+
+                     tags$li(style = "font-size: 22px;", "Heisler, J., Glibert, P.M., Burkholder, J.M., Anderson, D.M., Cochlan W., Dennison, W.C., Dortch, Q., Gobler, C.J., Heil, C.A., Humphries, E, Lewitus, A., Magnien, Marshall, H.G., Sellner, K., Stockwell, D.A., Stoecker, D.K., Suddleson, M. 2008. Eutrophication and harmful algal blooms: A scientific consensus. Harmful Algae. 8(1): 3-13."),   
+
+                     tags$li(style = "font-size: 22px;", "Jaworski, N.A., Howarth, R.W., Hetling, L.J. 1997. Atmospheric Deposition of Nitrogen Oxides onto the Landscape Contributes to Coastal Eutrophication in the Northeast United States. Environmental Science & Technology. 31: 1995-2004."),   
+
+                     tags$li(style = "font-size: 22px;", "Leach A, Cattell Noll L, Atwell B, Cattaneo L and Galloway J 2020 The nitrogen footprint of food production in the United States (unpublished)"), 
+
+                     tags$li(style = "font-size: 22px;", "Leach, A.M., Emery, K.A., Gephart, J., Davis, K.F., Erisman, J.W., Leip, A., Pace, M.L., D’Odorice, P., Carr, J., Noll, L.C., Castner, E., Galloway, J.N. 2016. Environmental impact food labels combining carbon, nitrogen, and water footprints. Food policy. 61: 213-223."),   
+
+                     tags$li(style = "font-size: 22px;", "Matson, P., Lohse, K.A., Hall, S.J. 2002. The globalization of nitrogen deposition: consequences for terrestrial ecosystems. JSTOR. 31(2): 113-119."),   
+
+                     tags$li(style = "font-size: 22px;", "Okin, G. S. (2017). 'Environmental impacts of food consumption by dogs and cats.' PLOS ONE 12(8): e0181301."),  
+
+                     tags$li(style = "font-size: 22px;", "Pinckney, J.L., Paerl, H.W. Tester, P., Richardson, T.L. The Role of Nutrient Loading and Eutrophication in Estuarine Ecology. Environmental Health Perspectives. 109: 699-706."),   
+
+                     tags$li(style = "font-size: 22px;", "Rabalais, N. N. (2002). 'Nitrogen in Aquatic Ecosystems.' AMBIO: A Journal of the Human Environment 31(2): 102-112, 111."),  
+
+                     tags$li(style = "font-size: 22px;", "USDA 2018 Fruit and Vegetable Prices (Washington, DC: United States Department of Agriculture Economic Research Service) https://www.ers.usda.gov/data-products/fruit-and-vegetable-prices.aspx"),  
+
+                     tags$li(style = "font-size: 22px;", "USDA 2018 USDA Food Composition Database (United States Department of Agriculture: Agricultural Research Service)"),  
+
+                     tags$li(style = "font-size: 22px;", "van Breemen, N., Boyer, E.W., Goodale, C.L., Jaworski, N.A., Paustian, K., Seitzinger, S. P., Lajtha, K., Mayer, B., Van Dam, D. Howarth, R.W., Nadelhoffer, K.J., Eve, M., Billen, G. 2002.  Where did all the nitrogen go? Fate of nitrogen inputs to large watersheds in the northeastern U.S.A. Biogeochemistry. 57/58: 267-293."),   
+
+                     tags$li(style = "font-size: 22px;", "van Egmond, K., et al. (2002). 'The European Nitrogen Case.' AMBIO: A Journal of the Human Environment 31(2): 72-78, 77."),  
+
+                     tags$li(style = "font-size: 22px;", "Wolfe, A. H. and J. A. Patz (2002). 'Reactive Nitrogen and Human Health:Acute and Long-term Implications.' AMBIO: A Journal of the Human Environment 31(2): 120-125, 126."),  
+
+                     tags$li(style = "font-size: 22px;", "Yang, J., et al. (2019). 'Interactive effects of temperature and nutrients on the phytoplankton community in an urban river in China.' Environmental Monitoring and Assessment 191(11): 688."),  
+
+                     tags$li(style = "font-size: 22px;", "Yang, Y.Y. & Toor, G.S. 2016. δ15N and δ18O Reveal the Sources of Nitrate-Nitrogen in Urban Residential Stormwater Runoff. Environmental Science & Technology. 50: 2881-2889. "),  
+
+                     tags$li(style = "font-size: 22px;", "Russell, K. L., Vietz, G. J., Fletcher, T. D. 2017. Global sediment yields from urban and urbanizing watersheds. Earth-Science Reviews. 168: 73-80. https://doi.org/10.1016/j.earscirev.2017.04.001. "), 
+
+                   )
+                 )
+        )
+      )
+    )
+  )
+)
+  
+
+# Define server logic
+server <- function(input, output, session) {
+  # Add server logic if needed
+  
+  observeEvent(input$btn_action, {
+    showModal(modalDialog(
+      title = "Information for the Map Tool",
+      tags$text(style = "font-size: 16px;",  "There are two main aspects to this tool. 
+                The map and the dropdown menu."),
+      
+      br(),
+      br(),
+      
+     column(6, tags$b("The dropdown menu"),
+      tags$li("This menu is a list of the nitrogen sources plus an option with the sources combined."),
+      tags$li("Click on any of the options and a map of Marion County broken into census tracts will appear!"),
+      tags$li("For more information on the nitrogen sources, click on the tab called 'Nitrogen Sources'!")),
+     
+     column(6, tags$b("The map"),
+            tags$li("To change the map displayed, click a nitrogen source from the dropdown menu"),
+            tags$li("The default map shown is the option 'All', where all nitrogen sources are combined."),
+            tags$li("For each source, the maps will display nitrogen produced per kilogram (kg) per Census
+                    Tract (CT) per year (yr)."),
+            tags$li("The legend is in the bottom right hand corner for more specific information."),
+            tags$li("Data was calculated from publicly sourced sites listed in the references. If you are more
+                    interested in the calculations, go back to the 'Nitrogen Sources' tab"))
+    ))
+  })
+  
+  observeEvent(input$btn_action2, {
+    showModal(modalDialog(
+      title = "Tab Information",
+      tags$text(style = "font-size: 16px;",  
+      tags$u("At this point, we know:"),
+      br(),
+      br(),
+      tags$li("The stages of the nitrogen cycle and how it transforms in the air, soil, water, and repeat."),
+      tags$li("The common sources of nitrogen, how to quantify the amount of nitrogen produced per year, and 
+              the calculation methods."),
+      tags$li("The study site details, location, and important information about nutrient pollution in that 
+              area."), 
+      tags$li("The nitrogen produced per nitrogen source (kg/CT/yr) in Marion County.")
+      ),
+      
+      br(),
+      br(),
+      
+      tags$b("Finally, to wrap this all together, we need to know and understand where and how nitrogen from each source
+      contributes and flows throughout the nitrogen cycle. Use the dropdown menu with the nitrogen sources
+      to learn about general pathways and potential destinations of nitrogen emissions based on the principles of the nitrogen
+             cycle and findings from scientific research from the sources!"),
+      
+      br(),
+      br(),
+      
+      tags$text(style = "font-size: 12px", "*Important note: Quantifying the exact percentages of nitrogen 
+      from emissions that 
+      travel throughout the nitrogen cycle to different environmental compartments (atmosphere, water, and soil) 
+      is complex and depends on various factors, including the type of fossil fuel burned, combustion technology, 
+      local environmental conditions, and specific nitrogen species emitted.")
+      
+    ))
+  })
+  
+  
+  Sum_of_Nsources <- Sum_of_Nsources[-c(225, 226), ]
+  Sum_of_Nsources$Longitude <- as.numeric(Sum_of_Nsources$Longitude)
+  Sum_of_Nsources$Latitude <- as.numeric(Sum_of_Nsources$Latitude)
+  unlist(Sum_of_Nsources)
+  coordinates(Sum_of_Nsources) = c("Longitude", "Latitude")
+  crs.geol = crs("+proj=longlat")
+  sp::proj4string(Sum_of_Nsources) = crs.geol
+  MarionCo1 <- CRS("+proj=longlat +datum=WGS84 +no_defs")
+  
+  N_data <- spTransform(Sum_of_Nsources, CRSobj =  MarionCo1)
+  
+  output$CenMaps_map <- renderLeaflet({
+    mapselect <- as.character(input$CenMaps_vars)
+    pal <- colorBin(palette = c('#358D40', '#08CD20', '#D6D915', '#D69C0D', '#CD150C', '#853430', '#7C6A69', '#2D2A2A'),
+                    domain = as.numeric(N_data[[mapselect]]))
+    
+    CenMaps_map <- leaflet(data = MarionCo) %>%
+      addPolygons(stroke = TRUE, opacity = 1, fillOpacity = 0.5, smoothFactor = 0.5,
+                  color = "black", fillColor = ~pal(as.numeric(N_data[[mapselect]])), weight = 1,
+                  labelOptions = labelOptions(
+                    style = list("font-weight" = "normal", padding = "3px 8px"),
+                    textsize = "15px",
+                    direction = "auto")) %>%
+      addLegend("bottomright", values = ~N_data, pal = pal, title = "N (kg/CT/yr)") %>%
+      addProviderTiles(providers$CartoDB.Positron)
+  })
+  
+  observeEvent(input$Map_shape_click, { # update the location selectInput on map clicks
+    p <- input$Map_shape_click
+    print(p)
+  })
+  
+  # Dynamically generate content based on selection
+  output$dynamicContent <- renderUI({
+    if (input$nitro_pathway_btn == "Introduction"){
+      p(class = "lead",
+      tags$text("With everything we know thus far, we know nitrogen does not stay still and we know how it
+                moves and transforms in the environment. The question, then, is this:"),
+      p(class = "lead",
+      tags$b("How does the added nitrogen from each common source contribute to the nitrogen cycle and the 
+              environment?",
+                     style = "text-size: 22px; align: center;")),
+      
+      br(),
+      tags$img(id="nitro_cartoon", type = "jpeg", src = "nitro_cartoon.jpeg", 
+               style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+      tags$figcaption("Figure 13: Nitrogen Pollution Cartoon", style = "text-align: center;"))
+      
+    }else if (input$nitro_pathway_btn == "Electricity") {
+      p(class = "lead",
+      tags$text("Knowing how electricity is produced will give us a better understanding of how it generates nitrogen 
+                pollution. Watch the video below on electricity production and the burning of fossil fuels to find 
+                out more!"),
+      br(),
+      br(),
+      HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/1gLsApOvzYQ" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+      tags$figcaption(style= 'text-align: center', "Electricity Production and the Burning of Fossil Fuels, 
+                      https://www.youtube.com/watch?v=1gLsApOvzYQ"),
+      
+      br(),
+      br(),
+      
+      p(class = "lead",
+      tags$text("Based on this video, we know that coal, natural gas and petroleum are fossil fuels commonly used to 
+                produce electricity. In this process, the fuels are burned to transform the chemical energy in the fuel 
+                into heat energy. The heat energy is used to heat water and convert it to steam. 
+                The steam generated spin turbines which then turn a generator. 
+                As the generator turns, it converts the kinetic energy into electrical energy.")),
+      br(),
+      
+      p(class = "lead",
+      tags$text("The electricity produced by the power station is sent along power lines that connect homes, 
+                buildings and cities through an electrical grid. When fossil fuels are burned, harmful gases 
+                are released into the Earth’s atmosphere. This can cause air pollution along with other impacts on the 
+                environment. When fossil fuels are burned to turn water into steam, emissions are produced. 
+                An emission is the release of a substance, often a gas, into the environment like a form of nitrogen. 
+                Some emissions can be harmful to organisms and the environment. These harmful emissions are called
+                pollutants.")),
+      
+      br(),
+      
+      p(class = "lead",
+      tags$text("Below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                electricity production.")),
+      
+      br(),
+      
+      tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+               style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+      tags$figcaption("Figure 14: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+      )
+      
+      
+    } else if (input$nitro_pathway_btn == "Fertilizer") {
+      p(class = "lead",
+        tags$text("There is a strong relationship between growing food and nitrogen pollution... this is because of 
+        fertilizers!"),
+        
+        p(class = "lead",
+          tags$text("Below are two videos. The left video is about the relationship between processing food and nitrogen
+                    pollution. The right video is about the relationship between food waste and nitrogen pollution.")),
+        
+        br(),
+        br(),
+        
+        column(6, HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/IgetNYzlwas" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+               tags$figcaption(style= 'text-align: center', "Fertilizers and Pollution, 
+                      https://www.youtube.com/watch?v=IgetNYzlwas")),
+        
+        column(6, HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/LdnyM0oN8xQ" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+               tags$figcaption(style= 'text-align: center', "Fertilizer Production and Pollution, 
+                      https://www.youtube.com/watch?v=LdnyM0oN8xQ"),
+               
+               br(),
+               br()),
+        
+        br(),
+        br(),
+        br(),
+        
+        
+        p(class = "lead",
+          tags$text("As the videos demonstrate, fertilizers, particularly nitrogen-based ones, are essential for crop growth. However, when applied 
+                    excessively, the surplus nitrogen not absorbed by plants can runoff into waterways, leading to nitrogen
+                    pollution. This runoff can cause eutrophication in aquatic environments, resulting in oxygen depletion
+                    and harm to aquatic life. Additionally, nitrogen from fertilizers can leach into groundwater, affecting 
+                    drinking water quality. Thus, managing fertilizer use is crucial to minimize its environmental impact.")),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("Additionally, the production of synthetic fertilizers, particularly nitrogen-based ones, 
+                    involves processes that emit greenhouse gases and nitrogen compounds, contributing to nitrogen 
+                    pollution. The Haber-Bosch process, used to synthesize ammonia from nitrogen and hydrogen, 
+                    requires significant energy, typically from fossil fuels, leading to CO2 emissions. 
+                    Moreover, the release of nitrogen oxides (NOx) during production contributes to air 
+                    pollution and can result in acid rain, further exacerbating environmental impacts.")),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("Below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                food.")),
+        
+        br(),
+        
+        tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+                 style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+        tags$figcaption("Figure 15: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+        
+      )
+      
+    } else if (input$nitro_pathway_btn == "Food (Production and Waste)") {
+      p(class = "lead",
+        tags$text("There is a strong relationship between growing food, processing food, and wasting food. Because
+                  growing food has a big influence on fertilizers, it is not considered in this source. However, 
+                  it is still important in order to understand how food contributes to the nitrogen cycle."),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("Below are two videos. The left video is about the relationship between processing food and nitrogen
+                    pollution. The right video is about the relationship between food waste and nitrogen pollution.")),
+        
+        br(),
+        br(),
+        
+        column(6, HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/nTKRtRz7uK4" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+        tags$figcaption(style= 'text-align: center', "Food Processing, 
+                      https://www.youtube.com/watch?v=nTKRtRz7uK4")),
+        
+        column(6, HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/ishA6kry8nc" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+               tags$figcaption(style= 'text-align: center', "Natural Gas, 
+                      https://www.youtube.com/watch?v=ishA6kry8nc")),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("More specifically, the relationship between food processing and nitrogen pollution involves 
+                    the release of nitrogen compounds into the environment through waste and emissions. 
+                    During the processing phase, foods are transformed, packaged, and preserved, often resulting in 
+                    nitrogenous waste that enters waterways and contributes to pollution. This can exacerbate problems 
+                    like eutrophication in aquatic ecosystems, harming water quality and aquatic life."),
+          
+          ),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("Food waste contributes to nitrogen pollution primarily through the decomposition process. 
+                    When organic matter, including wasted food, decomposes in landfills, it releases ammonia and 
+                    other nitrogen compounds. These emissions can contribute to air pollution and, when leached into 
+                    waterways, exacerbate water pollution issues such as eutrophication. The nitrogen cycle is further 
+                    impacted as the nutrients contained in food waste could have been used more efficiently if the food 
+                    had been consumed or composted instead, highlighting the importance of reducing food waste to mitigate 
+                    nitrogen pollution.")
+          ),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("Below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                food.")),
+        
+        br(),
+        
+        tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+                 style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+        tags$figcaption("Figure 16: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+        )
+      
+      
+    } else if (input$nitro_pathway_btn == "Natural Gas") {
+      p(class = "lead",
+        tags$text("Knowing how natural gas is produced will give us a better understanding of how it generates nitrogen 
+                pollution. Watch the video below on the history of natural gas, where it is found, and
+                the how it is extracted for common use!"),
+        br(),
+        br(),
+        HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/-njmj0diWu8" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+        tags$figcaption(style= 'text-align: center', "Natural Gas, 
+                      https://www.youtube.com/watch?v=-njmj0diWu8"),
+        
+        br(),
+        br(),
+      
+      p(class = "lead",
+        tags$text("Based on this video, we now know how natural gas was formed, how it is extracted, the different 
+                  types of natural gas, and what we use them for. To view more information on this source and 
+                  what natural gas can be used for, visit the following website:")),
+        
+        
+          tags$text(style= "font-size: 22px",
+        tags$li(tags$a(href="https://studentenergy.org/map/", 
+                       "Student Energy Map"))),
+      br(),
+      p(class = "lead",
+        tags$text(style= "font-size: 22px;", "Finally, below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                natural gas production.")),
+      
+      br(),
+      
+      tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+               style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+      tags$figcaption("Figure 17: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+  )
+      
+    } else if (input$nitro_pathway_btn == "Pet Food Production") {
+      p(class = "lead",
+        tags$text("Pet food production creates nitrogen pollution due to the manufacturing and processing of it. Now, there are no great videos
+                  on this relationship, so here is a relatively concise explanation! 
+                  This relationship can be broken down into several key areas:"),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text(tags$b("Ingredient Sourcing and Agriculture"), ": Many processed pet foods are high in protein, 
+                    sourced from both animal and plant-based ingredients. The agriculture involved in producing these
+                    proteins, especially animal agriculture (like beef, chicken, and fish), is a major contributor to 
+                    nitrogen pollution [21]. This occurs through the use of nitrogen-based fertilizers for feed crops and 
+                    the manure produced by livestock. These sources release nitrogen into the environment, which can 
+                    leach into water bodies, leading to nutrient pollution [21].")
+        
+          ),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text(tags$b("Manufacturing Process"), ": The production of pet food itself can contribute to nitrogen 
+                    pollution through the release of nitrogenous waste in effluents [21]. Facilities that process animal 
+                    proteins may discharge water that contains high levels of nitrogen compounds into local waterways 
+                    unless properly treated [21]. This can exacerbate the problem of eutrophication, where excessive nutrients 
+                    in bodies of water lead to dense plant growth and the subsequent depletion of oxygen, harming aquatic 
+                    life.")),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text(tags$b("Packaging and Waste Disposal"), ": While not a direct source of nitrogen pollution, 
+                              the packaging and waste associated with pet food manufacturing can impact the environment. 
+                              Improper disposal and the degradation of packaging materials can contribute to broader 
+                              environmental pollution, which, in turn, can affect the nitrogen cycle indirectly [21].")),
+        
+        br(),
+        tags$img(id="petfood", type = "jpeg", src = "petfood.jpeg", 
+                 style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+        tags$figcaption("Figure 18: Pet food", style = "text-align: center;"),
+      
+        br(),
+        
+        p(class = "lead",
+          tags$text("Overall, the relationship between processed pet food manufacturing and nitrogen pollution is complex, 
+                    involving multiple stages from ingredient sourcing to waste disposal. Reducing this impact requires 
+                    efforts at various points in the pet food supply chain, including more sustainable agricultural practices, 
+                    improved waste management in manufacturing, and responsible pet waste disposal by pet owners.")),
+        
+        
+        br(),
+        p(class = "lead",
+          tags$text(style= "font-size: 22px;", "Below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                natural gas production.")),
+        
+        br(),
+        
+        tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+                 style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+        tags$figcaption("Figure 19: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+        )
+      
+    } else if (input$nitro_pathway_btn == "Pet Waste") {
+      p(class = "lead",
+        tags$text("Pet waste creates nitrogen pollution due to being full of nitrogen and it washing away into our storm sewers
+                  and directly entering local rivers and streams."),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("Below are two videos that demonstrate how pet waste transports into local waterways and the dangers
+                    that it can have on the environment.")),
+        
+        column(6, HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/B_uNwAapmts" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+               tags$figcaption(style= 'text-align: center', "Pet Waste and Water Pollution, 
+                      https://www.youtube.com/watch?v=B_uNwAapmts")),
+        
+        column(6, HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/hpObgKulxZg" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+               tags$figcaption(style= 'text-align: center', "The Environmental Dangers of Poop, 
+                      https://www.youtube.com/watch?v=hpObgKulxZg"),
+               
+               br(),
+               br()),
+        
+        p(class = "lead",
+        tags$text("As the videos demonstrated, pet waste, when not properly managed, releases nitrogen as it breaks down, 
+                  contributing to nitrogen pollution. This decomposition process results in ammonia and nitrate compounds 
+                  entering soil and waterways, promoting excessive algae growth that can lead to eutrophication. 
+                  This condition depletes oxygen in water bodies, harming aquatic life and disrupting ecosystems. 
+                  Therefore, responsible disposal and management of pet waste are crucial to prevent its adverse 
+                  effects on environmental health and reduce the contribution to nitrogen pollution.")),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text("Moreover, dog waste carries harmful microorganisms such as E. coli, salmonella, and giardia, 
+                    which pose health risks to humans and animals. When not properly disposed of, these pathogens can 
+                    leach into waterways, contaminating drinking water sources and recreational waters. The feces can 
+                    also contribute to antibiotic-resistant infections in humans, highlighting the importance of proper 
+                    pet waste management")),
+        
+        br(),
+        p(class = "lead",
+          tags$text(style= "font-size: 22px;", "Finally, below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                natural gas production.")),
+        
+        br(),
+        
+        tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+                 style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+        tags$figcaption("Figure 20: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+        
+          
+        
+        )
+      
+    } else if (input$nitro_pathway_btn == "Transportation") {
+      p(class = "lead",
+        tags$text("Transportation (planes, trains, and automobiles) produce nitrogen pollution via natural gas.
+        Therefore, knowing how natural gas is produced will give us a better understanding of how it generates nitrogen 
+                pollution. Watch the video below on the history of natural gas, where it is found, and
+                the how it is extracted for common use!"),
+        br(),
+        br(),
+        HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/-njmj0diWu8" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+        tags$figcaption(style= 'text-align: center', "Natural Gas, 
+                      https://www.youtube.com/watch?v=-njmj0diWu8"),
+        
+        br(),
+        br(),
+        
+        p(class = "lead",
+          tags$text("Based on this video, we now know how natural gas was formed, how it is extracted, the different 
+                  types of natural gas, and what we use them for. To view more information on this source and 
+                  what natural gas can be used for, visit the following website:")),
+        
+        
+        tags$text(style= "font-size: 22px",
+                  tags$li(tags$a(href="https://studentenergy.org/map/", 
+                                 "Student Energy Map"))),
+        br(),
+        p(class = "lead",
+          tags$text(style= "font-size: 22px;", "Finally, below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                natural gas production.")),
+        
+        br(),
+        
+        tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+                 style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+        tags$figcaption("Figure 21: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+      )
+      
+      
+    } else if (input$nitro_pathway_btn == "Wastewater") {
+      p(class = "lead",
+        tags$text("Wastewater can be a large contributor of nitrogen pollution, specifically in local waterways. Many times,
+                  this happens during a large stormevent when water treatment plants are over capacity, and water has no
+                  other way to go than directly into local rivers and streams."),
+        
+        br(),
+        
+        p(class = "lead", 
+          tags$text("Below is a video demonstrating the connection between wastewater and nitrogen pollution.")),
+        
+        HTML('<iframe width="700" height="400" src="https://www.youtube.com/embed/ev64xXDYmaw" 
+                        frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                        style="display: block; margin-left: auto; margin-right: auto;"
+                        allowfullscreen></iframe>'),
+        tags$figcaption(style= 'text-align: center', "Natural Gas, 
+                      https://www.youtube.com/watch?v=ev64xXDYmaw",
+                        
+                        br(),
+                        br()),
+        
+        p(class = "lead", 
+          tags$text("Now, we understand the connection... but what does wastewater contain that is full of nitrogen? Well,
+                    Wastewater contains significant amounts of nitrogen from various sources, 
+                    including human waste, industrial processes, and agricultural runoff. When released untreated or 
+                    inadequately treated into water bodies, it leads to nitrogen pollution, contributing to eutrophication 
+                    and harmful algal blooms. This process depletes oxygen in water, harming aquatic life and disrupting 
+                    ecosystems. Therefore, effective wastewater treatment is crucial to remove nitrogen compounds and 
+                    mitigate their environmental impact.")),
+        
+        br(),
+        
+        p(class = "lead",
+          tags$text(style= "font-size: 22px;", "Below is a general graphic demonstrating how these nitrogen pollutants move and transform due to 
+                the secretion of wastewater.")),
+        
+        br(),
+        
+        tags$img(id="nram_graphic", type = "jpeg", src = "nram_graphic.png", 
+                 style="display: block; margin-right: auto; margin-left: auto; height: 500px"),
+        tags$figcaption("Figure 22: Nitrogen moving through the Nitrogen Cycle", style = "text-align: center;")
+        
+        )
+    }
+  })
+  
+  observeEvent(input$submit1, {
+    # This is where you would handle the feedback, e.g., save to a database
+    # For demonstration, we're just printing to the console
+    print(paste("Feedback received:", input$conclusions))
+    
+    # Display a confirmation message
+    output$confirmation1 <- renderText("Thank you for your feedback!")
+  })
+  
+  observeEvent(input$submit2, {
+    # This is where you would handle the feedback, e.g., save to a database
+    # For demonstration, we're just printing to the console
+    print(paste("Feedback received:", input$questions))
+    
+    # Display a confirmation message
+    output$confirmation2 <- renderText("Thank you for your feedback!")
+  })
+  
+}
+
+# Run the Shiny app
+shinyApp(ui, server)
+
+```
